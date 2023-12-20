@@ -202,7 +202,7 @@ class CogData:
         :param obj: L'objet dont on veut récupérer les données
         :param table_name: Nom de la table
         :param key: Clé de la valeur
-        :param value: Valeur
+        :param value: Valeur (doit être convertible en str)
         """
         try:
             _get_object_db_name(obj)
