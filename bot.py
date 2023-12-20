@@ -111,10 +111,5 @@ async def main():
             
         await bot.start(bot.config['TOKEN']) # type: ignore
             
-        @bot.hybrid_command(name='help', description='Renvoie un lien vers la documentation du bot')
-        async def help_command(ctx: commands.Context) -> None:
-            """Renvoie un lien vers la documentation du bot"""
-            await ctx.send(bot.config['HELP_LINK']) # type: ignore
-            
 if __name__ == "__main__":
     asyncio.run(main())
