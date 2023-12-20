@@ -20,7 +20,7 @@ intents.members = True
 
 async def main():
     bot = commands.Bot(
-        command_prefix="N.",
+        command_prefix="..",
         description="Bot multifonction modulaire français",
         intents=intents,
         help_command=None
