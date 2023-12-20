@@ -8,10 +8,8 @@ import aiohttp
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
-from numpy import isin
 
 from common import dataio
-from common.utils.pretty import DEFAULT_EMBED_COLOR
 
 logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
 
