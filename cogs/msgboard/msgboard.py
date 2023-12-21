@@ -244,10 +244,11 @@ class MsgBoard(commands.Cog):
         if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
+        await interaction.response.defer(ephemeral=True)
         current_webhook_url = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL')
         if not channel:
             if not current_webhook_url:
-                await interaction.response.send_message("**Salon du message board** • Aucun salon n'est défini pour le message board.", ephemeral=True)
+                await interaction.followup.send("**Salon du message board** • Aucun salon n'est défini pour le message board.", ephemeral=True)
             else:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
                 webhook = await webhook.fetch()
@@ -256,7 +257,7 @@ class MsgBoard(commands.Cog):
                 except discord.NotFound:
                     pass
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', '')
-                await interaction.response.send_message("**Salon du message board** • Message board désactivé et webhook supprimé.", ephemeral=True)  
+                await interaction.followup.send("**Salon du message board** • Message board désactivé et webhook supprimé.", ephemeral=True)  
         else:
             if current_webhook_url:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
@@ -268,14 +269,14 @@ class MsgBoard(commands.Cog):
                 
                 webhook = await channel.create_webhook(name="Message board", reason="Changement du salon du message board")
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', webhook.url)
-                await interaction.response.send_message(f"**Salon du message board** • Message board déplacé dans <#{channel.id}>.", ephemeral=True)
+                await interaction.followup.send(f"**Salon du message board** • Message board déplacé dans <#{channel.id}>.", ephemeral=True)
             else:
                 try:
                     webhook = await channel.create_webhook(name="Message board", reason="Activation du message board")
                 except discord.Forbidden:
-                    return await interaction.response.send_message(f"**Salon du message board** • Je n'ai pas la permission de créer un webhook dans <#{channel.id}>.", ephemeral=True)
+                    return await interaction.followup.send(f"**Salon du message board** • Je n'ai pas la permission de créer un webhook dans <#{channel.id}>.", ephemeral=True)
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', webhook.url)
-                await interaction.response.send_message(f"**Salon du message board** • Message board activé dans <#{channel.id}>.", ephemeral=True)  
+                await interaction.followup.send(f"**Salon du message board** • Message board activé dans <#{channel.id}>.", ephemeral=True)  
                 
     @config_group.command(name='threshold')
     @app_commands.rename(threshold='seuil', half_notification='notif_moitie')
