@@ -90,7 +90,7 @@ class MsgBoard(commands.Cog):
             files = [await attachment.to_file() for attachment in message.attachments if attachment.size < 8388608]
             extra = [attachment.url for attachment in message.attachments if attachment.size >= 8388608]
             
-        content = f"{reply_content}{message.content if message.content else ''}"
+        content = f"{reply_content}\n{message.content}" if message.content else reply_content
         if extra:
             content += '\n' + ' '.join(extra)
         
