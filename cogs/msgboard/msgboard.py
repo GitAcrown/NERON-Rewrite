@@ -187,7 +187,7 @@ class MsgBoard(commands.Cog):
         
         threshold = self.data.get_keyvalue_table_value(guild, 'settings', 'Threshold', cast=int)
         
-        notif = bool(self.data.get_keyvalue_table_value(guild, 'settings', 'NotifyHalfThreshold'))
+        notif = self.data.get_keyvalue_table_value(guild, 'settings', 'NotifyHalfThreshold', cast=bool)
         if notif:
             notif_threshold = threshold // 2 + 1
             if votes_count == notif_threshold and not self.get_message_history(message).get('notification_id'):
@@ -233,7 +233,7 @@ class MsgBoard(commands.Cog):
         if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.channel, (discord.TextChannel | discord.Thread)):
             raise ValueError("L'interaction doit être sur un serveur.")
         
-        if not bool(self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled')):
+        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         current_webhook_url = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL')
@@ -279,7 +279,7 @@ class MsgBoard(commands.Cog):
         if not isinstance(interaction.guild, discord.Guild):
             raise TypeError("La commande doit être utilisée sur un serveur.")
         
-        if not bool(self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled')):
+        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         if half_notification and threshold < 3:
@@ -298,7 +298,7 @@ class MsgBoard(commands.Cog):
         if not isinstance(interaction.guild, discord.Guild):
             raise ValueError("L'interaction doit être sur un serveur.")
         
-        if not bool(self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled')):
+        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         if type(emoji) is not str or len(emoji) > 1:
@@ -313,12 +313,12 @@ class MsgBoard(commands.Cog):
         if not isinstance(interaction.guild, discord.Guild):
             raise ValueError("L'interaction doit être sur un serveur.")
         
-        if not bool(self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled')):
+        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         threshold = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Threshold', cast=int)
         emoji = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Emoji')
-        notif = bool(self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'NotifyHalfThreshold'))
+        notif = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'NotifyHalfThreshold', cast=bool)
         
         webhook_url = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL')
         if webhook_url:

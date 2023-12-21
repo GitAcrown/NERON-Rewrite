@@ -132,7 +132,7 @@ class WebUtils(commands.Cog):
         if not message.guild:
             return
         
-        if not bool(self.data.get_keyvalue_table_value(message.guild, 'settings', 'EnableFixLinks')):
+        if not self.data.get_keyvalue_table_value(message.guild, 'settings', 'EnableFixLinks', cast=bool):
             return
         
         triggers = self.get_triggers_cache(message.guild)
@@ -150,7 +150,7 @@ class WebUtils(commands.Cog):
         if links_content != '\n'.join(links):
             replace_msg = await message.reply(links_content, mention_author=False)
             await message.edit(suppress=True)
-            if bool(self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton')):
+            if self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton', cast=bool):
                 view = CancelButtonView(message, replace_msg)
                 await replace_msg.edit(view=view)
         

@@ -197,6 +197,10 @@ class CogData:
         r = data.fetchone(f'SELECT * FROM {table_name} WHERE key = ?', (key,))
         if r is None:
             raise ValueError(f'La clé {key} n\'existe pas')
+        # Cas spécifique du cast booléen
+        if cast == bool:
+            return bool(int(r['value']))
+        
         return cast(r['value'])
     
     def set_keyvalue_table_value(self, obj: discord.abc.Snowflake | str, table_name: str, key: str, value: Any) -> None:
