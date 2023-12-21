@@ -109,16 +109,10 @@ class HelpMenuView(discord.ui.View):
         embed = self.pages[self.current_page]
         self.message = await self.__interaction.followup.send(embed=embed, view=self)
             
-    @discord.ui.button(label="<", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="←", style=discord.ButtonStyle.blurple)
     async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Page précédente"""
         self.current_page = self.current_page - 1 if self.current_page > 0 else len(self.pages) - 1
-        await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
-        
-    @discord.ui.button(label=">", style=discord.ButtonStyle.blurple)
-    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Page suivante"""
-        self.current_page = self.current_page + 1 if self.current_page < len(self.pages) - 1 else 0
         await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
         
     @discord.ui.button(label="Fermer", style=discord.ButtonStyle.red)
@@ -128,6 +122,12 @@ class HelpMenuView(discord.ui.View):
         if self.message:
             await self.message.delete()
         self.stop()
+        
+    @discord.ui.button(label="→", style=discord.ButtonStyle.blurple)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Page suivante"""
+        self.current_page = self.current_page + 1 if self.current_page < len(self.pages) - 1 else 0
+        await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
     
     async def on_timeout(self):
         """Appelé lorsque le menu expire"""

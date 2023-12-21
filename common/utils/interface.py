@@ -34,7 +34,7 @@ class ConfirmationView(ui.View):
         
 class EmbedPaginatorMenu(ui.View):
     def __init__(self, *, embeds: list[discord.Embed], 
-                 users: list[discord.User | discord.Member], 
+                 users: list[discord.User | discord.Member] = [],
                  timeout: int = 60, 
                  loop: bool = False):
         """Crée un menu de pagination pour des embeds
@@ -53,26 +53,25 @@ class EmbedPaginatorMenu(ui.View):
         self.initial_interaction: Interaction
         
     async def interaction_check(self, interaction: Interaction):
-        if interaction.user in self.users:
+        if not self.users or interaction.user in self.users:
             return True
         await interaction.response.send_message("Vous n'avez pas la permission d'utiliser ce bouton", ephemeral=True)
         
     async def on_timeout(self) -> None:
         self.stop()
         if self.initial_interaction is not None:
-            await self.initial_interaction.response.edit_message(view=None)
+            await self.initial_interaction.edit_original_response(view=None)
         
     async def start(self, interaction: Interaction):
         self.initial_interaction = interaction
-        await interaction.response.send_message(embed=self.embeds[self.current_page], view=self)
+        self.handle_buttons()
+        await interaction.followup.send(embed=self.embeds[self.current_page], view=self)
         
     def handle_buttons(self):
-        if self.current_page == 0:
-            self.previous_button.disabled = True
-        if self.current_page == len(self.embeds) - 1:
-            self.next_button.disabled = True
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page == len(self.embeds) - 1   
         
-    @ui.button(label='◀', style=discord.ButtonStyle.blurple)
+    @ui.button(label='←', style=discord.ButtonStyle.blurple)
     async def previous_button(self, interaction: Interaction, button: ui.Button):
         self.current_page -= 1
         if self.current_page < 0:
@@ -83,12 +82,12 @@ class EmbedPaginatorMenu(ui.View):
         self.handle_buttons()
         await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
         
-    @ui.button(label='■', style=discord.ButtonStyle.red)
+    @ui.button(label='Fermer', style=discord.ButtonStyle.red)
     async def stop_button(self, interaction: Interaction, button: ui.Button):
         self.stop()
         await interaction.response.edit_message(view=None)
     
-    @ui.button(label='▶', style=discord.ButtonStyle.blurple)
+    @ui.button(label='→', style=discord.ButtonStyle.blurple)
     async def next_button(self, interaction: Interaction, button: ui.Button):
         self.current_page += 1
         if self.current_page >= len(self.embeds):
