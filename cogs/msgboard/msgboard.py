@@ -1,10 +1,9 @@
 import asyncio
 import logging
 from datetime import datetime
-
 from typing import Any
-import aiohttp
 
+import aiohttp
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
