@@ -83,8 +83,15 @@ class MsgBoard(commands.Cog):
             elif reply_msg.attachments:
                 attachments_links = '\n'.join([attachment.url for attachment in reply_msg.attachments])
                 reply_content = f"> **{reply_msg.author.name}** · <t:{int(reply_msg.created_at.timestamp())}>\n{attachments_links}\n\n"
+                
+        files, extra = [], []
+        if message.attachments:
+            files = [await attachment.to_file() for attachment in message.attachments if attachment.size < 8388608]
+            extra = [attachment.url for attachment in message.attachments if attachment.size >= 8388608]
             
         content = f"{reply_content}{message.content if message.content else ''}"
+        if extra:
+            content += '\n\n' + ' '.join(extra)
         
         async with aiohttp.ClientSession() as session:
             webhook = discord.Webhook.from_url(webhook_url, session=session, client=self.bot)
@@ -93,7 +100,7 @@ class MsgBoard(commands.Cog):
                 username=message.author.name,
                 avatar_url=message.author.display_avatar.url,
                 embeds=message.embeds,
-                files=[await attachment.to_file() for attachment in message.attachments],
+                files=files,
                 silent=True,
                 view=jump_view
             )
@@ -202,8 +209,8 @@ class MsgBoard(commands.Cog):
                 except discord.NotFound:
                     pass
             
-            await self.repost_message(message)
             await self.send_threshold_notification(message)
+            await self.repost_message(message)
             
     # Configuration ============================================================
     
