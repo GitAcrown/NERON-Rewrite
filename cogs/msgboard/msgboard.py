@@ -70,7 +70,7 @@ class MsgBoard(commands.Cog):
         if not webhook_url:
             return
         
-        jump_to_button = discord.ui.Button(label='Source', url=message.jump_url)
+        jump_to_button = discord.ui.Button(label='Aller au message', url=message.jump_url)
         jump_view = discord.ui.View()
         jump_view.add_item(jump_to_button)
         
@@ -78,11 +78,12 @@ class MsgBoard(commands.Cog):
         reply_content = ''
         if reply and isinstance(reply, discord.Message):
             reply_msg = await message.channel.fetch_message(reply.id)
+            reply_content = f"> **{reply_msg.author.name}** · <t:{int(reply_msg.created_at.timestamp())}>"
             if reply_msg.content:
-                reply_content = f"> **{reply_msg.author.name}** · <t:{int(reply_msg.created_at.timestamp())}>\n> {reply_msg.content}\n\n"
-            elif reply_msg.attachments:
-                attachments_links = '\n'.join([attachment.url for attachment in reply_msg.attachments])
-                reply_content = f"> **{reply_msg.author.name}** · <t:{int(reply_msg.created_at.timestamp())}>\n{attachments_links}\n\n"
+                reply_content += f"\n> {reply_msg.content}"
+            if reply_msg.attachments:
+                attachments_links = ' '.join([attachment.url for attachment in reply_msg.attachments])
+                reply_content += f"\n> {attachments_links}"
                 
         files, extra = [], []
         if message.attachments:
@@ -91,7 +92,7 @@ class MsgBoard(commands.Cog):
             
         content = f"{reply_content}{message.content if message.content else ''}"
         if extra:
-            content += '\n\n' + ' '.join(extra)
+            content += '\n' + ' '.join(extra)
         
         async with aiohttp.ClientSession() as session:
             webhook = discord.Webhook.from_url(webhook_url, session=session, client=self.bot)
