@@ -203,11 +203,11 @@ class WebUtils(commands.Cog):
         await interaction.response.send_message(embed=embed)
         
     @fixlinks_group.command(name='set')
-    @app_commands.rename(replace='remplacement')
+    @app_commands.rename(search='original', replace='correction')
     async def fixlinks_set(self, interaction: Interaction, search: str, replace: str):
         """Ajouter ou modifier un déclencheur pour corriger les liens
         
-        :param regex: Portion de lien à remplacer (ex: https://twitter.com/)
+        :param search: Portion de lien à remplacer (ex: https://twitter.com/)
         :param replace: Remplacement à effectuer (ex: https://vxtwitter.com/)
         """
         if not isinstance(interaction.guild, discord.Guild):
