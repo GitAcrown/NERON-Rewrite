@@ -53,7 +53,10 @@ class CogData:
         obj_type = type(obj) if isinstance(obj, discord.abc.Snowflake) else obj
         conn = self.__get_sqlite_connection(obj)
         with closing(conn.cursor()) as cursor:
+            tables = [row['name'] for row in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")]
             for i in self.get_initializers_for(obj_type):
+                if not i.fill_if_missing and i.table_name in tables: # Si la table existe déjà et qu'on ne veut pas la remplir, on passe à la suivante
+                    continue
                 cursor.execute(i.create_query)
                 if i.default_values:
                     cursor.executemany(f'INSERT OR IGNORE INTO {i.table_name} ({",".join(i.default_values[0].keys())}) VALUES ({",".join(["?"] * len(i.default_values[0]))})', 
@@ -310,13 +313,18 @@ class ObjectTableInitializer:
                  table_name: str,
                  create_query: str,
                  *,
-                 default_values: Sequence[dict[str, Any]] = []):
+                 default_values: Sequence[dict[str, Any]] = [],
+                 fill_if_missing: bool = True):
         """Initialiseur de table de données
 
         :param table_name: Nom de la table à créer
         :param create_query: Requête SQL de création de table
         :param default_values: Valeurs par défaut à insérer dans la table
+        :param fill_if_missing: Si True, les valeurs de default_values seront réinsérées à chaque initialisation si elles ne sont pas présentes dans la table (True par défaut)
         """
+        # On vérifie que le nom de la table correspond à la requête de création
+        if not table_name.lower() in create_query.lower():
+            raise ValueError('Le nom de la table doit être présent dans la requête de création')
         self.table_name = table_name
         
         if not create_query.lower().startswith('create table'):
@@ -329,6 +337,8 @@ class ObjectTableInitializer:
             if not all(set(row.keys()) == keys for row in default_values):
                 raise ValueError('Toutes les lignes de default_values doivent avoir les mêmes clés')
         self.default_values = default_values
+        
+        self.fill_if_missing = fill_if_missing
         
     def __repr__(self) -> str:
         return f'<ObjectTableInitializer {self.table_name}>'
