@@ -31,6 +31,7 @@ class MsgBoard(commands.Cog):
         }
         self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
         
+        # Historique des messages repostés
         board_history = dataio.ObjectTableInitializer(
             table_name='board_history',
             create_query="""CREATE TABLE IF NOT EXISTS board_history (
@@ -243,20 +244,29 @@ class MsgBoard(commands.Cog):
             else:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
                 webhook = await webhook.fetch()
-                await webhook.delete(reason="Désactivation du message board")
+                try:
+                    await webhook.delete(reason="Désactivation du message board")
+                except discord.NotFound:
+                    pass
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', '')
                 await interaction.response.send_message("**Salon du message board** • Message board désactivé et webhook supprimé.", ephemeral=True)  
         else:
             if current_webhook_url:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
                 webhook = await webhook.fetch()
-                await webhook.delete(reason="Changement du salon du message board")
+                try:
+                    await webhook.delete(reason="Changement du salon du message board")
+                except discord.NotFound:
+                    pass
                 
                 webhook = await channel.create_webhook(name="Message board", reason="Changement du salon du message board")
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', webhook.url)
                 await interaction.response.send_message(f"**Salon du message board** • Message board déplacé dans <#{channel.id}>.", ephemeral=True)
             else:
-                webhook = await channel.create_webhook(name="Message board", reason="Activation du message board")
+                try:
+                    webhook = await channel.create_webhook(name="Message board", reason="Activation du message board")
+                except discord.Forbidden:
+                    return await interaction.response.send_message(f"**Salon du message board** • Je n'ai pas la permission de créer un webhook dans <#{channel.id}>.", ephemeral=True)
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', webhook.url)
                 await interaction.response.send_message(f"**Salon du message board** • Message board activé dans <#{channel.id}>.", ephemeral=True)  
                 
