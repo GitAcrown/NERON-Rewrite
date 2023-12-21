@@ -201,7 +201,7 @@ class MsgBoard(commands.Cog):
             if votes_count == notif_threshold and not self.get_message_history(message).get('notification_id'):
                 await self.send_half_threshold_notification(message, votes_count)
         
-        if votes_count >= threshold and not self.get_message_history(message).get('reposted'):
+        if votes_count == threshold and not self.get_message_history(message).get('reposted'):
             notif_message_id = self.get_message_history(message).get('notification_id')
             if notif_message_id:
                 try:
