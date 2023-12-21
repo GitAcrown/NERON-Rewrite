@@ -1,15 +1,10 @@
-import asyncio
 import logging
 import re
 from datetime import datetime
 
-from typing import Any
-import aiohttp
-
 import discord
 from discord import Interaction, app_commands
-from discord.ext import commands, tasks
-from numpy import True_
+from discord.ext import commands
 
 from common import dataio
 from common.utils import fuzzy
@@ -62,7 +57,7 @@ class WebUtils(commands.Cog):
         }
         self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
         
-        # Déclencheurs Regex
+        # Correcteurs de liens
         link_fixes = dataio.ObjectTableInitializer(
             table_name='link_fixes',
             create_query="""CREATE TABLE IF NOT EXISTS link_fixes (
