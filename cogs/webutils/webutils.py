@@ -150,7 +150,7 @@ class WebUtils(commands.Cog):
         if links_content != '\n'.join(links):
             replace_msg = await message.reply(links_content, mention_author=False)
             await message.edit(suppress=True)
-            if bool(self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton', cast=int)):
+            if bool(self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton')):
                 view = CancelButtonView(message, replace_msg)
                 await replace_msg.edit(view=view)
         
@@ -162,6 +162,7 @@ class WebUtils(commands.Cog):
                                       default_permissions=discord.Permissions(manage_messages=True))
     
     @fixlinks_group.command(name='enable')
+    @app_commands.rename(enable='activer')
     async def fixlinks_enable(self, interaction: Interaction, enable: bool):
         """Active ou désactive la correction de liens
         
@@ -173,6 +174,7 @@ class WebUtils(commands.Cog):
         await interaction.response.send_message(f"**Correction de liens** • La correction de liens est maintenant **{'activée' if enable else 'désactivée'}**\nUtilisez `/fixlinks list` pour afficher les correcteurs configurés", ephemeral=True)
     
     @fixlinks_group.command(name='cancelbutton')
+    @app_commands.rename(enable='activer')
     async def fixlinks_cancelbutton(self, interaction: Interaction, enable: bool):
         """Active ou désactive l'affichage d'un bouton pour annuler la correction de liens
         
