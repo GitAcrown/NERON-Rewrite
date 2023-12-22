@@ -22,13 +22,13 @@ DEFAULT_TRIGGERS = [
 
 class CancelButtonView(discord.ui.View):
     """Ajoute un bouton permettant d'annuler la preview et restaurer celle du message original"""
-    def __init__(self, link_message: discord.Message, replace_message: discord.Message, *, timeout: float | None = 7):
+    def __init__(self, link_message: discord.Message, replace_message: discord.Message, *, timeout: float | None = 8):
         super().__init__(timeout=timeout)
         self.link_msg = link_message
         self.replace_msg = replace_message
         self.cancelled = False
 
-    @discord.ui.button(label='Annuler la correction', style=discord.ButtonStyle.red)
+    @discord.ui.button(label='Annuler', style=discord.ButtonStyle.red)
     async def cancel(self, interaction: Interaction, button: discord.ui.Button):
         self.cancelled = True
         await self.replace_msg.delete()
@@ -149,8 +149,14 @@ class WebUtils(commands.Cog):
             links_content = re.sub(trigger['search'], trigger['replace'], links_content)
         
         if links_content != '\n'.join(links):
+            try:
+                await message.edit(suppress=True)
+            except discord.NotFound:
+                pass
+            except discord.Forbidden:
+                pass
+                
             replace_msg = await message.reply(links_content, mention_author=False)
-            await message.edit(suppress=True)
             if self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton', cast=bool):
                 view = CancelButtonView(message, replace_msg)
                 await replace_msg.edit(view=view)
@@ -196,7 +202,7 @@ class WebUtils(commands.Cog):
         if not triggers:
             return await interaction.response.send_message("**Vide** • Aucun correcteur n'a été configuré", ephemeral=True)
         
-        embed = discord.Embed(title="Correcteurs de lien configurés", color=DEFAULT_EMBED_COLOR)
+        embed = discord.Embed(title="Correcteurs de liens configurés", color=DEFAULT_EMBED_COLOR)
         embed.set_footer(text=f"Utilisez /fixlinks set <search> <replace> pour ajouter un correcteur")
 
         text = ""
