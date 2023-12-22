@@ -16,7 +16,8 @@ DEFAULT_TRIGGERS = [
     {'label': 'twitter.com', 'search': 'https://twitter.com/', 'replace': 'https://vxtwitter.com/'},
     {'label': 'x.com', 'search': 'https://x.com/', 'replace': 'https://vxtwitter.com/'},
     {'label': 'threads.net', 'search': 'https://www.threads.net/', 'replace': 'https://www.vxthreads.net/'},
-    {'label': 'vm.tiktok.com', 'search': 'https://vm.tiktok.com/', 'replace': 'https://vm.vxtiktok.com/'}
+    {'label': 'vm.tiktok.com', 'search': 'https://vm.tiktok.com/', 'replace': 'https://vm.vxtiktok.com/'},
+    {'label': 'reddit.com', 'search': 'https://www.reddit.com/', 'replace': 'https://www.rxddit.com/'}
      ]
 
 class CancelButtonView(discord.ui.View):
@@ -214,6 +215,8 @@ class WebUtils(commands.Cog):
         """
         if not isinstance(interaction.guild, discord.Guild):
             return await interaction.response.send_message("Cette commande n'est pas disponible en MP", ephemeral=True)
+        
+        search, replace = search.strip(), replace.strip()
         
         triggers = self.get_triggers_cache(interaction.guild)
         if len(triggers) >= 20:
