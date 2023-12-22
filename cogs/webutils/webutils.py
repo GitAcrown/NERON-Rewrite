@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from datetime import datetime
@@ -149,14 +150,14 @@ class WebUtils(commands.Cog):
             links_content = re.sub(trigger['search'], trigger['replace'], links_content)
         
         if links_content != '\n'.join(links):
+            replace_msg = await message.reply(links_content, mention_author=False)
+            await asyncio.sleep(0.1) # On attend un peu pour éviter que Discord bloque l'édition
             try:
                 await message.edit(suppress=True)
             except discord.NotFound:
                 pass
             except discord.Forbidden:
                 pass
-                
-            replace_msg = await message.reply(links_content, mention_author=False)
             if self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton', cast=bool):
                 view = CancelButtonView(message, replace_msg)
                 await replace_msg.edit(view=view)
