@@ -18,6 +18,7 @@ DEFAULT_TRIGGERS = [
     {'label': 'x.com', 'search': 'https://x.com/', 'replace': 'https://vxtwitter.com/'},
     {'label': 'threads.net', 'search': 'https://www.threads.net/', 'replace': 'https://www.vxthreads.net/'},
     {'label': 'vm.tiktok.com', 'search': 'https://vm.tiktok.com/', 'replace': 'https://vm.vxtiktok.com/'},
+    {'label': 'tiktok.com', 'search': 'https://www.tiktok.com/', 'replace': 'https://www.vxtiktok.com/'},
     {'label': 'reddit.com', 'search': 'https://www.reddit.com/', 'replace': 'https://www.rxddit.com/'}
      ]
 
