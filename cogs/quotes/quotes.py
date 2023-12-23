@@ -142,18 +142,6 @@ class Quotes(commands.Cog):
             extras={'description': "Génère une image de citation avec le contenu du message sélectionné."})
         self.bot.tree.add_command(self.generate_quote)
         
-        quote_logs = dataio.ObjectTableInitializer(
-            table_name='quote_logs',
-            create_query="""CREATE TABLE IF NOT EXISTS quote_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT,
-                image_url TEXT,
-                message_url TEXT,
-                author_id INTEGER,
-                timestamp INTEGER
-                )""")
-        self.data.register_tables_for(discord.Guild, [quote_logs])
-        
         self.__assets = self.__load_assets()
         
     def cog_unload(self):
@@ -176,22 +164,7 @@ class Quotes(commands.Cog):
                 continue
             query = """DELETE FROM quote_logs WHERE timestamp < ?"""
             self.data.get(guild).execute(query, (int(datetime.now().timestamp()) - QUOTE_EXPIRATION,))
-        
-    # Callback ------------------------------------------------------------------
-    
-    async def generate_quote_callback(self, interaction: Interaction, message: discord.Message):
-        """Callback pour la commande de génération de citation"""
-        if not message.content or message.content.isspace():
-            return await interaction.response.send_message("**Action impossible** · Le message est vide", ephemeral=True)
-        if interaction.channel_id != message.channel.id:
-            return await interaction.response.send_message("**Action impossible** · Le message doit être dans le même salon", ephemeral=True)
-        
-        try:
-            view = QuotifyView(self, message)
-            await view.start(interaction)
-        except Exception as e:
-            logger.exception(e)
-            await interaction.response.send_message(f"**Erreur dans l'initialisation du menu** · {e}", ephemeral=True)
+
         
     # Génération de citations -------------------------------------------------
     
@@ -274,12 +247,6 @@ class Quotes(commands.Cog):
                 break
         return messages
     
-    def normalize_text(self, text: str) -> str:
-        """Effectue des remplacements de texte pour éviter les problèmes d'affichage"""
-        text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
-        text = re.sub(r'(\*|_|`|~|\\)', r'', text)
-        return text
-    
     async def generate_quote_from(self, messages: list[discord.Message]) -> discord.File:
         messages = sorted(messages, key=lambda m: m.created_at)
         base_message = messages[0]
@@ -301,20 +268,12 @@ class Quotes(commands.Cog):
             buffer.seek(0)
             alt_text = f"\"{full_content}\" - {author_name} ({message_date})"
             return discord.File(buffer, filename='quote.png', description=alt_text)
-        
-            
-    # Logs de citations générées ----------------------------------------------
     
-    def log_quote(self, guild: discord.Guild, full_content: str, generated_image_url: str, message_url: str, author_id: int):
-        """Enregistre une citation générée dans la base de données"""
-        query = """INSERT INTO quote_logs (content, image_url, message_url, author_id, timestamp) VALUES (?, ?, ?, ?, ?)"""
-        self.data.get(guild).execute(query, (full_content, generated_image_url, message_url, author_id, int(datetime.now().timestamp())))
-        
-    def get_quote_logs(self, guild: discord.Guild, limit: int = 20) -> list[dict]:
-        """Récupère les logs de citations générées"""
-        query = """SELECT * FROM quote_logs ORDER BY timestamp DESC LIMIT ?"""
-        r = self.data.get(guild).fetchall(query, (limit,))
-        return r if r else []
+    def normalize_text(self, text: str) -> str:
+        """Effectue des remplacements de texte pour éviter les problèmes d'affichage"""
+        text = re.sub(r'<a?:(\w+):\d+>', r':\1:', text)
+        text = re.sub(r'(\*|_|`|~|\\)', r'', text)
+        return text
     
     # COMMANDES =================================================================
     
@@ -343,31 +302,22 @@ class Quotes(commands.Cog):
         
         await interaction.followup.send(file=discord.File(data, 'quote.png', description="Citation fournie par Inspirobot.me"))
         
-    @app_commands.command(name='lastquotes')
-    @app_commands.guild_only()
-    async def get_last_quotes(self, interaction: Interaction):
-        """Affiche les 20 dernières citations générées sur le serveur"""
-        if not isinstance(interaction.guild, discord.Guild):
-            return await interaction.response.send_message("**Action impossible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
+     # Callback ------------------------------------------------------------------
+    
+    async def generate_quote_callback(self, interaction: Interaction, message: discord.Message):
+        """Callback pour la commande de génération de citation"""
+        if not message.content or message.content.isspace():
+            return await interaction.response.send_message("**Action impossible** · Le message est vide", ephemeral=True)
+        if interaction.channel_id != message.channel.id:
+            return await interaction.response.send_message("**Action impossible** · Le message doit être dans le même salon", ephemeral=True)
         
-        await interaction.response.defer()
-        logs = self.get_quote_logs(interaction.guild)
-        if not logs:
-            return await interaction.followup.send("**Aucune citation générée** • Aucune citation n'a été générée sur ce serveur.", ephemeral=True)
-
-        embeds = []
-        for log in logs:
-            author = interaction.guild.get_member(log['author_id'])
-            if not author:
-                continue
-            embed = discord.Embed(color=pretty.DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(log['timestamp']))
-            embed.set_author(name=f"{author.name}", url=str(log['message_url']), icon_url=author.display_avatar.url)
-            embed.set_image(url=log['image_url'])
-            embed.set_footer(text=f"ID: {log['id']}")
-            embeds.append(embed)
-            
-        view = interface.EmbedPaginatorMenu(embeds=embeds, users=[interaction.user], timeout=30)
-        await view.start(interaction)
+        try:
+            view = QuotifyView(self, message)
+            await view.start(interaction)
+        except Exception as e:
+            logger.exception(e)
+            await interaction.response.send_message(f"**Erreur dans l'initialisation du menu** · {e}", ephemeral=True)
+        
 
 async def setup(bot):
     await bot.add_cog(Quotes(bot))
