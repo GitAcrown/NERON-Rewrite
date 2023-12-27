@@ -31,7 +31,7 @@ class MsgBoard(commands.Cog):
         self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
         
         # Historique des messages repostés
-        board_history = dataio.ObjectTableInitializer(
+        board_history = dataio.TableInitializer(
             table_name='board_history',
             create_query="""CREATE TABLE IF NOT EXISTS board_history (
                 message_id INTEGER PRIMARY KEY,
@@ -315,30 +315,6 @@ class MsgBoard(commands.Cog):
         
         self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Emoji', emoji)
         await interaction.response.send_message(f"**Emoji de vote** • Emoji de vote mis à jour : {emoji}.", ephemeral=True)
-        
-    @config_group.command(name='info')
-    async def get_msgboard_settings(self, interaction: Interaction):
-        """Affiche les paramètres du message board"""
-        if not isinstance(interaction.guild, discord.Guild):
-            raise ValueError("L'interaction doit être sur un serveur.")
-        
-        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
-            return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
-        
-        threshold = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Threshold', cast=int)
-        emoji = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Emoji')
-        notif = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'NotifyHalfThreshold', cast=bool)
-        
-        webhook_url = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL')
-        if webhook_url:
-            webhook = discord.Webhook.from_url(webhook_url, client=self.bot)
-            webhook = await webhook.fetch()
-            channel = f"<#{webhook.channel_id}>" if webhook.channel_id else None
-        else:
-            channel = None
-        
-        text = f"**Salon** · {channel if channel else 'Aucun'}\n**Seuil** · `{threshold}`\n**Emoji** · `{emoji}`\n**Notification à la moitié du seuil** · {'Oui' if notif else 'Non'}"
-        await interaction.response.send_message(f"## **Paramètres du message board**\n{text}", ephemeral=True)
         
 async def setup(bot):
     await bot.add_cog(MsgBoard(bot))

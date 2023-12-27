@@ -61,7 +61,7 @@ class WebUtils(commands.Cog):
         self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
         
         # Correcteurs de liens
-        link_fixes = dataio.ObjectTableInitializer(
+        link_fixes = dataio.TableInitializer(
             table_name='link_fixes',
             create_query="""CREATE TABLE IF NOT EXISTS link_fixes (
                 label TEXT PRIMARY KEY,

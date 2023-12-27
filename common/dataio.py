@@ -20,7 +20,7 @@ class CogData:
         self.cog_folder = Path(f'cogs/{cog_name}')
         
         self.__connections : dict[discord.abc.Snowflake | str, sqlite3.Connection] = {}
-        self.__initializers : dict[Type[discord.abc.Snowflake] | str, list[ObjectTableInitializer]] = {}
+        self.__initializers : dict[Type[discord.abc.Snowflake] | str, list[TableInitializer]] = {}
         
     def __repr__(self) -> str:
         return f'<CogData {self.cog_name}>'
@@ -125,7 +125,7 @@ class CogData:
             
     # ---- Initialisation des tables ----
     
-    def register_tables_for(self, obj_type: Type[discord.abc.Snowflake] | str, initializers: Iterable['ObjectTableInitializer']) -> None:
+    def register_tables_for(self, obj_type: Type[discord.abc.Snowflake] | str, initializers: Iterable['TableInitializer']) -> None:
         """Enregistre des initialisateurs de tables de données pour un type d'objet
 
         :param obj_type: Type d'objet concerné par les initialisateurs
@@ -134,12 +134,12 @@ class CogData:
         if obj_type not in self.__initializers:
             self.__initializers[obj_type] = []
         for i in initializers:
-            if not isinstance(i, ObjectTableInitializer):
+            if not isinstance(i, TableInitializer):
                 raise TypeError(f'Expected ObjectTableInitializer, got {type(i)}')
             if i not in self.__initializers[obj_type]:
                 self.__initializers[obj_type].append(i)
     
-    def get_initializers_for(self, obj_type: Type[discord.abc.Snowflake] | str) -> list['ObjectTableInitializer']:
+    def get_initializers_for(self, obj_type: Type[discord.abc.Snowflake] | str) -> list['TableInitializer']:
         """Récupère les initialisateurs pour un type d'objet
 
         :param obj_type: Type d'objet concerné par les initialisateurs
@@ -159,7 +159,7 @@ class CogData:
         table_name = re.sub(r'[^a-z0-9_]', '_', table_name.lower())
         create_query = f'CREATE TABLE IF NOT EXISTS {table_name} (key TEXT PRIMARY KEY, value TEXT)'
         insert_values = [{'key': str(k), 'value': str(v)} for k, v in default_values.items()]
-        self.register_tables_for(obj_type, [ObjectTableInitializer(table_name, create_query, default_values=insert_values)])
+        self.register_tables_for(obj_type, [TableInitializer(table_name, create_query, default_values=insert_values)])
         
     def get_keyvalue_table_values(self, obj: discord.abc.Snowflake | str, table_name: str) -> dict[str, str]:
         """Récupère l'intégralité des valeurs d'une table clé-valeur
@@ -312,7 +312,7 @@ class ObjectData:
         self.conn.rollback()
 
 
-class ObjectTableInitializer:
+class TableInitializer:
     def __init__(self, 
                  table_name: str,
                  create_query: str,
