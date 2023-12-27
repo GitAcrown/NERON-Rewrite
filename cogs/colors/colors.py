@@ -21,9 +21,8 @@ COLOR_ROLE_NAME_PATTERN = r'^#?([0-9a-fA-F]{6})$' # ex. #ff0000
 CLEANUP_COUNTDOWN = 10 # Nombre de changements de rôle avant de faire du ménage
 
 class AvatarPreviewSelectMenu(discord.ui.View):
-    def __init__(self, cog: 'Colors', initial_interaction: Interaction, previews: list[tuple[Image.Image, str]], *, timeout: float = 60):
+    def __init__(self, initial_interaction: Interaction, previews: list[tuple[Image.Image, str]], *, timeout: float = 60):
         super().__init__(timeout=timeout)
-        self.__cog = cog
         self.initial_interaction = initial_interaction
         self.previews = previews
         
@@ -70,10 +69,18 @@ class AvatarPreviewSelectMenu(discord.ui.View):
             self.current_page = len(self.previews) - 1
         await self.update()
         
-    @discord.ui.button(label='Fermer', style=discord.ButtonStyle.red)
+    @discord.ui.button(label='Annuler', style=discord.ButtonStyle.red)
     async def stop_button(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         self.stop()
         await interaction.delete_original_response()
+        
+    @discord.ui.button(label='Appliquer', style=discord.ButtonStyle.green)
+    async def choose_button(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.result = self.previews[self.current_page][1]
+        self.stop()
+        await interaction.edit_original_response(view=None)
         
     @discord.ui.button(label='→', style=discord.ButtonStyle.grey)
     async def next_button(self, interaction: Interaction, button: discord.ui.Button):
@@ -82,13 +89,6 @@ class AvatarPreviewSelectMenu(discord.ui.View):
         if self.current_page >= len(self.previews):
             self.current_page = 0
         await self.update()
-        
-    @discord.ui.button(label='Appliquer la couleur', style=discord.ButtonStyle.green, row=1)
-    async def choose_button(self, interaction: Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.result = self.previews[self.current_page][1]
-        self.stop()
-        await interaction.edit_original_response(view=None)
         
 
 class Colors(commands.Cog):
@@ -127,7 +127,7 @@ class Colors(commands.Cog):
     
     def get_color_roles(self, guild: discord.Guild) -> list[discord.Role]:
         """Renvoie la liste des rôles de couleur du serveur."""
-        return [r for r in guild.roles if r.name.startswith('#') and r.name[1:].isalnum() and r.color.value != INVALID_COLOR]
+        return [r for r in guild.roles if r.name.startswith('#') and r.name[1:].isalnum() and f'#{r.name[1:].lower()}' != INVALID_COLOR]
     
     def get_color_role(self, guild: discord.Guild, hex_color: str) -> discord.Role | None:
         """Renvoie le rôle de couleur correspondant à la couleur donnée."""
@@ -204,8 +204,13 @@ class Colors(commands.Cog):
             return
         
         color_roles = self.get_color_roles(guild)
-        color_roles.sort(key=lambda r: self.rgb_to_hsv(r.name)[0])
-        await guild.edit_role_positions({r: i + 1 for i, r in enumerate(color_roles)}, reason="Réorganisation des rôles de couleur")
+        # On les range dans l'ordre des couleurs de l'arc-en-ciel
+        color_roles.sort(key=lambda r: self.rgb_to_hsv(r.name))
+        try:
+            await guild.edit_role_positions({r: master_role.position - (i + 1) for i, r in enumerate(color_roles)})
+        except Exception as e:
+            logger.exception(e, exc_info=True)
+            raise commands.CommandError("Impossible de réorganiser les rôles de couleur, vérifiez que j'ai la permission de gérer les rôles.")
         
     async def clean_unused_color_roles(self, guild: discord.Guild) -> int:
         """Supprime les rôles de couleur inutilisés du serveur et renvoie le nombre de rôles supprimés."""
@@ -444,7 +449,7 @@ class Colors(commands.Cog):
         if not previews:
             return await interaction.followup.send("**Impossible** • Aucune couleur n'a pu être extraite de votre avatar.", ephemeral=True)
         
-        menu = AvatarPreviewSelectMenu(self, interaction, previews)
+        menu = AvatarPreviewSelectMenu(interaction, previews)
         await menu.start()
         await menu.wait()
         if not menu.result:
