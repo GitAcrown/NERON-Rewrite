@@ -64,6 +64,9 @@ async def main():
                 return await interaction.response.send_message(content=msg)
             else:
                 logger.error(f'Erreur App_commands : {error}', exc_info=True)
+                # Si l'interaction a déjà été répondu, on utilise followup
+                if interaction.response.is_done():
+                    return await interaction.followup.send(content=f"**Erreur ·** Une erreur est survenue lors de l'exécution de la commande :\n`{error}`")
                 return await interaction.response.send_message(content=f"**Erreur ·** Une erreur est survenue lors de l'exécution de la commande :\n`{error}`")
         
         # Synchronisation des commandes ---------------------------
