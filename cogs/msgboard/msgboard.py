@@ -12,7 +12,7 @@ from common import dataio
 
 logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
 
-HISTORY_EXPIRATION = 60 * 60 * 24 # 24h
+HISTORY_EXPIRATION = 60 * 60 * 72 # 3 jours
 
 class MsgBoard(commands.Cog):
     """Compilation des meilleurs messages du serveur."""
@@ -26,7 +26,8 @@ class MsgBoard(commands.Cog):
             'Threshold': 3,
             'Emoji': '⭐',
             'NotifyHalfThreshold': 0,
-            'Webhook_URL': ''
+            'Webhook_URL': '',
+            'MaxMessageAge': 60 * 60 * 24 # 24 heures par défaut
         }
         self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
         
@@ -181,12 +182,18 @@ class MsgBoard(commands.Cog):
         guild = channel.guild
         if not self.data.get_keyvalue_table_value(guild, 'settings', 'Webhook_URL'):
             return
+        
+        
         reaction_emoji = payload.emoji.name
         if reaction_emoji != self.data.get_keyvalue_table_value(guild, 'settings', 'Emoji'):
             return
         message = await channel.fetch_message(payload.message_id)
         if not message:
             return  
+        
+        maxage = self.data.get_keyvalue_table_value(guild, 'settings', 'MaxMessageAge', cast=int)
+        if message.created_at.timestamp() < (datetime.utcnow().timestamp() - maxage):
+            return
         
         votes_count = [reaction.count for reaction in message.reactions if str(reaction.emoji) == reaction_emoji]
         if not votes_count:
@@ -315,6 +322,22 @@ class MsgBoard(commands.Cog):
         
         self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Emoji', emoji)
         await interaction.response.send_message(f"**Emoji de vote** • Emoji de vote mis à jour : {emoji}.", ephemeral=True)
+        
+    @config_group.command(name='maxage')
+    @app_commands.rename(maxage='age_max')
+    async def set_msg_maxage(self, interaction: Interaction, maxage: app_commands.Range[int, 1, 72]):
+        """Définit l'âge maximal que ne doit pas dépasser un message pour être reposté
+
+        :param maxage: Âge maximal en heures
+        """
+        if not isinstance(interaction.guild, discord.Guild):
+            raise ValueError("L'interaction doit être sur un serveur.")
+        
+        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+            return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
+        
+        self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'MaxMessageAge', maxage * 60 * 60)
+        await interaction.response.send_message(f"**Âge maximal** • L'âge maximal des messages a été défini à {maxage} heures.", ephemeral=True)
         
 async def setup(bot):
     await bot.add_cog(MsgBoard(bot))
