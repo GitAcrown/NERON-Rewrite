@@ -235,7 +235,10 @@ class Colors(commands.Cog):
     def draw_image_palette(self, img: str | BytesIO, n_colors: int = 5) -> Image.Image:
         """Dessine une palette de couleurs à partir d'une image."""
         assets_path = str(self.data.get_folder('assets'))
-        image = Image.open(img).convert('RGB')
+        try:
+            image = Image.open(img).convert('RGB')
+        except Exception as e:
+            raise commands.CommandError("Impossible d'ouvrir l'image.")
         colors = colorgram.extract(image.resize((50, 50)), n_colors)
 
         image = ImageOps.contain(image, (500, 500), method=Image.LANCZOS)
