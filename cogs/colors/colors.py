@@ -274,27 +274,28 @@ class Colors(commands.Cog):
         draw = ImageDraw.Draw(mask)
         draw.ellipse((0, 0) + avatar.size, fill=255)
         avatar.putalpha(mask)
-        avatar = avatar.resize((50, 50), Image.LANCZOS)
+        avatar = avatar.resize((46, 46), Image.LANCZOS)
         
         versions = []
         for name_color in [c for c in colors if f'#{c.rgb.r:02x}{c.rgb.g:02x}{c.rgb.b:02x}' != INVALID_COLOR]:
             images = []
             name_font = ImageFont.truetype(f'{assets_path}/gg_sans.ttf', 18)
             content_font = ImageFont.truetype(f'{assets_path}/gg_sans_light.ttf', 18)
-            for bg_color in [(54, 57, 63), (255, 255, 255)]:
-                bg = Image.new('RGBA', (400, 96), color=bg_color)
-                bg.paste(avatar, (15, 15), avatar)
+            for bg_color in [(0, 0, 0), (54, 57, 63), (255, 255, 255)]:
+                bg = Image.new('RGBA', (420, 75), color=bg_color)
+                bg.paste(avatar, (13, 13), avatar)
                 d = ImageDraw.Draw(bg)
                 # Nom
-                d.text((84, 10), member.display_name, font=name_font, fill=name_color.rgb)
+                d.text((76, 10), member.display_name, font=name_font, fill=name_color.rgb)
                 # Contenu
-                txt_color = (255, 255, 255) if bg_color == (54, 57, 63) else (0, 0, 0)
-                d.text((84, 34), f"Ceci est une prévisualisation de\nl'affichage de votre pseudo coloré.", font=content_font, fill=txt_color)
+                txt_color = (255, 255, 255) if bg_color in [(54, 57, 63), (0, 0, 0)] else (0, 0, 0)
+                d.text((76, 34), f"Prévisualisation de l'affichage du rôle", font=content_font, fill=txt_color)
                 images.append(bg)
             
-            full = Image.new('RGBA', (400, 192))
+            full = Image.new('RGBA', (420, 75 * 3))
             full.paste(images[0], (0, 0))
-            full.paste(images[1], (0, 96))
+            full.paste(images[1], (0, 75))
+            full.paste(images[2], (0, 75 * 2))
             versions.append((full, f'#{name_color.rgb.r:02x}{name_color.rgb.g:02x}{name_color.rgb.b:02x}'.upper()))
             
         return versions
