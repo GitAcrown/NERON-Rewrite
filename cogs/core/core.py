@@ -5,6 +5,7 @@ import logging
 import textwrap
 import traceback
 from contextlib import redirect_stdout
+from datetime import datetime
 from typing import Any, Optional
 
 import discord
@@ -15,7 +16,7 @@ from discord.ext import commands
 from common import dataio
 from common.utils import fuzzy
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 class HelpMenuView(discord.ui.View):
     """Menu d'aide des commandes"""
@@ -279,6 +280,15 @@ class Core(commands.Cog):
     async def ping(self, interaction: discord.Interaction) -> None:
         """Renvoie le ping du bot"""
         await interaction.response.send_message(f"Pong ! (`{round(self.bot.latency * 1000)}ms`)")
+        
+    @app_commands.command(name="guildtime")
+    async def guildtime(self, interaction: discord.Interaction) -> None:
+        """Renvoie l'heure locale basée sur le fuseau horaire défini sur le serveur"""
+        if not isinstance(interaction.guild, discord.Guild):
+            await interaction.response.send_message("**Erreur** • Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            return
+        tz = self.get_guild_global_setting(interaction.guild, 'Timezone')
+        await interaction.response.send_message(f"**Date locale** • {datetime.now(pytz.timezone(tz)).strftime('%d/%m/%Y %H:%M:%S')} ({tz})")
                 
     # Commandes d'aide des commandes ------------------------------
     
