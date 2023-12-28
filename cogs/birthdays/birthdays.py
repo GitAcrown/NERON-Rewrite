@@ -6,7 +6,6 @@ import pytz
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 
-from cogs.core.core import Core
 from common import dataio
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
