@@ -72,6 +72,9 @@ class CogData:
         :param obj: L'objet dont on veut récupérer les données
         :return: Instance de ObjectData
         """
+        if isinstance(obj, str):
+            obj = obj.lower()
+            
         if obj not in self.__connections:
             self.__connections[obj] = self.__initialize_tables(obj)
         return ObjectData(obj, self.__connections[obj])
@@ -92,6 +95,9 @@ class CogData:
 
         :param obj: L'objet dont on veut fermer la connexion
         """
+        if isinstance(obj, str):
+            obj = obj.lower()
+            
         if obj in self.__connections:
             self.__connections[obj].close()
             del self.__connections[obj]
@@ -131,6 +137,8 @@ class CogData:
         :param obj_type: Type d'objet concerné par les initialisateurs
         :param initializers: Liste d'initialisateurs
         """
+        if isinstance(obj_type, str):
+            obj_type = obj_type.lower()
         if obj_type not in self.__initializers:
             self.__initializers[obj_type] = []
         for i in initializers:
@@ -145,6 +153,8 @@ class CogData:
         :param obj_type: Type d'objet concerné par les initialisateurs
         :return: Liste d'initialisateurs
         """
+        if isinstance(obj_type, str):
+            obj_type = obj_type.lower()
         return self.__initializers.get(obj_type, [])
     
     # ---- Tables de type clé-valeur ----
