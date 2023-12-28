@@ -314,11 +314,11 @@ class Birthdays(commands.Cog):
             return await interaction.response.send_message("**Aucun anniversaire** • Aucun anniversaire n'est prévu dans les prochains jours")
         
         msg = ''
-        year_changed = False
+        year_changed = listebday[0][1].year != today.year
         for b in listebday[:limit]:
             user, date = b
             if date.year != today.year and not year_changed:
-                msg += f"**`{date.year}` ――――――**\n"
+                msg += f"### `{date.year}`\n"
                 year_changed = True
             msg += f"{user.mention} · <t:{int(date.timestamp())}:D>\n"
         embed = discord.Embed(title="Prochains anniversaires", description=msg, color=0x2b2d31)
@@ -394,7 +394,9 @@ class Birthdays(commands.Cog):
                 continue
             self.set_user_birthday(user, bday)
             result += f"> **{user}** · `{bday}`\n"
-        await ctx.send(result)
+        messages = [result[i:i+2000] for i in range(0, len(result), 2000)]
+        for msg in messages:
+            await ctx.send(msg)
 
 async def setup(bot):
     await bot.add_cog(Birthdays(bot))
