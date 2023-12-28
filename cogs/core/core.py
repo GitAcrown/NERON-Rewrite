@@ -10,8 +10,11 @@ from typing import Any, Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
+import pytz
+from traitlets import default
 
 from common.utils import fuzzy
+from common import dataio
 
 logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
 
@@ -138,12 +141,22 @@ class HelpMenuView(discord.ui.View):
 
 class Core(commands.Cog):
     """Module central du bot, contenant des commandes de base."""
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.data = dataio.get_cog_data(self)
+        
+        # Préférences globales par défaut des serveurs
+        default_preferences = {
+            'MainTextChannelID': 0,
+            'Timezone': 'Europe/Paris'
+        }
+        self.data.register_keyvalue_table_for(discord.Guild, 'global_settings', default_values=default_preferences)
+        
+        self.timezones = pytz.all_timezones
+        
         self._last_result: Optional[Any] = None
 
-    # ---- Gestion des commandes et modules ----
+    # Gestion des commandes et modules ------------------------------
 
     @commands.command(name="load", hidden=True)
     @commands.is_owner()
@@ -204,7 +217,7 @@ class Core(commands.Cog):
         for cog_name, _cog in self.bot.cogs.items():
             await ctx.send(cog_name)
             
-    # ---- Commandes d'évaluation de code ----
+    # Commandes d'évaluation de code ------------------------------
             
     def cleanup_code(self, content: str) -> str:
         """Automatically removes code blocks from the code."""
@@ -268,7 +281,7 @@ class Core(commands.Cog):
         """Renvoie le ping du bot"""
         await interaction.response.send_message(f"Pong ! (`{round(self.bot.latency * 1000)}ms`)")
                 
-    # ---- Commandes d'aide des commandes ----
+    # Commandes d'aide des commandes ------------------------------
     
     def _get_bot_commands(self):
         cogs = self.bot.cogs
@@ -309,6 +322,86 @@ class Core(commands.Cog):
                 all_commands.append(command)
         r = fuzzy.finder(current, all_commands, key=lambda c: c.qualified_name)
         return [app_commands.Choice(name=c.qualified_name, value=c.qualified_name) for c in r][:5]
+    
+    # Commandes de gestion des préférences ------------------------------
+    
+    def get_guild_global_settings(self, guild: discord.Guild) -> dict[str, str]:
+        """Récupère les valeurs brutes des préférences globales
+
+        :param guild: Serveur concerné
+        :return: Dictionnaire de strings des préférences globales
+        """
+        return self.data.get_keyvalue_table_values(guild, 'global_settings')
+    
+    def get_guild_global_setting(self, guild: discord.Guild, key: str, *, cast: type = str) -> Any:
+        """Récupère une valeur d'une préférence globale
+
+        :param guild: Serveur concerné
+        :param key: Clé de la préférence
+        :param cast: Type de la valeur à récupérer, par défaut str
+        :return: Valeur de la préférence
+        """
+        return self.data.get_keyvalue_table_value(guild, 'global_settings', key, cast=cast)
+    
+    def set_guild_global_setting(self, guild: discord.Guild, key: str, value: Any) -> None:
+        """Définit la valeur d'une préférence globale
+        
+        :param guild: Serveur concerné
+        :param key: Clé de la préférence
+        :param value: Valeur à définir (doit pouvoir être convertie en str)
+        """
+        self.data.set_keyvalue_table_value(guild, 'global_settings', key, value)
+        
+    config_group = app_commands.Group(name='config', description="Paramètres généraux du bot sur ce serveur", guild_only=True, default_permissions=discord.Permissions(manage_guild=True))
+    
+    @config_group.command(name="timezone")
+    async def cmd_config_timezone(self, interaction: discord.Interaction, timezone: str | None = None):
+        """Définir le fuseau horaire utilisé pour les commandes sur ce serveur
+        
+        :param timezone: Fuseau horaire (ex. Europe/Paris)
+        """
+        if not isinstance(interaction.guild, discord.Guild):
+            await interaction.response.send_message("**Erreur** • Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            return
+        
+        if not timezone:
+            current_timezone = self.get_guild_global_setting(interaction.guild, 'Timezone')
+            await interaction.response.send_message(f"**Fuseau horaire actuel** • `{current_timezone}`", ephemeral=True)
+            return
+        
+        if timezone not in self.timezones:
+            await interaction.response.send_message(f"**Erreur** • Le fuseau horaire `{timezone}` n'existe pas. Consultez https://en.wikipedia.org/wiki/List_of_tz_database_time_zones pour la liste des fuseaux horaires disponibles.", ephemeral=True)
+            return
+        
+        self.set_guild_global_setting(interaction.guild, 'Timezone', timezone)
+        await interaction.response.send_message(f"**Succès** • Le fuseau horaire du serveur a été défini sur `{timezone}`.", ephemeral=True)
+        
+    @cmd_config_timezone.autocomplete('timezone')
+    async def autocomplete_timezone(self, interaction: discord.Interaction, current: str):
+        r = fuzzy.finder(current, self.timezones)
+        return [app_commands.Choice(name=t, value=t) for t in r][:10]
+    
+    @config_group.command(name="mainchannel")
+    async def cmd_config_mainchannel(self, interaction: discord.Interaction, channel: discord.TextChannel | None = None):
+        """Définir le salon écrit principal du serveur
+        
+        :param channel: Salon principal
+        """
+        if not isinstance(interaction.guild, discord.Guild):
+            await interaction.response.send_message("**Erreur** • Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            return
+        
+        if not channel:
+            current_channel_id = self.get_guild_global_setting(interaction.guild, 'MainTextChannelID', cast=int)
+            current_channel = interaction.guild.get_channel(current_channel_id)
+            if not current_channel:
+                await interaction.response.send_message(f"**Salon principal actuel** • Aucun salon défini", ephemeral=True)
+                return
+            await interaction.response.send_message(f"**Salon principal actuel** • {current_channel.mention}", ephemeral=True)
+            return
+        
+        self.set_guild_global_setting(interaction.guild, 'MainTextChannelID', channel.id)
+        await interaction.response.send_message(f"**Succès** • Le salon principal du serveur a été défini sur {channel.mention}.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Core(bot))
