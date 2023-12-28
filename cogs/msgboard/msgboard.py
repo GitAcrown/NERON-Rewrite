@@ -275,6 +275,7 @@ class MsgBoard(commands.Cog):
                 try:
                     webhook = await webhook.fetch()
                 except discord.NotFound:
+                    self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', '')
                     return await interaction.followup.send(f"**Salon du message board** • Le webhook du message board n'existe plus dans <#{channel.id}>.\nSupprimez tous les webhooks inutiles de ce salon puis relancez la commande.", ephemeral=True)
                 try:
                     await webhook.delete(reason="Changement du salon du message board")
