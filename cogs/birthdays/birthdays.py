@@ -338,10 +338,10 @@ class Birthdays(commands.Cog):
         
         if channel:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'NotificationChannelID', channel.id)
-            await interaction.response.send_message(f"**Salon défini** • Les notifications d'anniversaires seront envoyées dans {channel.mention}")
+            await interaction.response.send_message(f"**Salon défini** • Les notifications d'anniversaires seront envoyées dans {channel.mention}", ephemeral=True)
         else:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'NotificationChannelID', 0)
-            await interaction.response.send_message("**Salon supprimé** • Les notifications d'anniversaires ne seront plus envoyées")
+            await interaction.response.send_message("**Salon supprimé** • Les notifications d'anniversaires ne seront plus envoyées", ephemeral=True)
             
     @settings_group.command(name='hour')
     @app_commands.rename(hour='heure')
@@ -353,7 +353,7 @@ class Birthdays(commands.Cog):
             return await interaction.response.send_message("**Commande non disponible** • Cette commande n'est disponible que sur un serveur", ephemeral=True)
         
         self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'NotificationHour', hour)
-        await interaction.response.send_message(f"**Heure définie** • Les notifications d'anniversaires seront envoyées à ***{hour}h***")
+        await interaction.response.send_message(f"**Heure définie** • Les notifications d'anniversaires seront envoyées à ***{hour}h***", ephemeral=True)
         
     @settings_group.command(name='role')
     @app_commands.rename(role='rôle')
@@ -366,10 +366,10 @@ class Birthdays(commands.Cog):
         
         if role:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'BirthdayRoleID', role.id)
-            await interaction.response.send_message(f"**Rôle défini** • Le rôle {role.mention} sera attribué aux membres le jour de leur anniversaire")
+            await interaction.response.send_message(f"**Rôle défini** • Le rôle {role.mention} sera attribué aux membres le jour de leur anniversaire", ephemeral=True)
         else:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'BirthdayRoleID', 0)
-            await interaction.response.send_message("**Rôle supprimé** • Aucun rôle ne sera attribué aux membres le jour de leur anniversaire")
+            await interaction.response.send_message("**Rôle supprimé** • Aucun rôle ne sera attribué aux membres le jour de leur anniversaire", ephemeral=True)
 
     # OWNER ONLY ===============================================================
     
