@@ -258,17 +258,24 @@ class MsgBoard(commands.Cog):
                 await interaction.followup.send("**Salon du message board** • Aucun salon n'est défini pour le message board.", ephemeral=True)
             else:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
-                webhook = await webhook.fetch()
                 try:
-                    await webhook.delete(reason="Désactivation du message board")
+                    webhook = await webhook.fetch()
                 except discord.NotFound:
                     pass
+                else:
+                    try:
+                        await webhook.delete(reason="Désactivation du message board")
+                    except discord.NotFound:
+                        pass
                 self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL', '')
                 await interaction.followup.send("**Salon du message board** • Message board désactivé et webhook supprimé.", ephemeral=True)  
         else:
             if current_webhook_url:
                 webhook = discord.Webhook.from_url(current_webhook_url, client=self.bot)
-                webhook = await webhook.fetch()
+                try:
+                    webhook = await webhook.fetch()
+                except discord.NotFound:
+                    return await interaction.followup.send(f"**Salon du message board** • Le webhook du message board n'existe plus dans <#{channel.id}>.\nSupprimez tous les webhooks inutiles de ce salon puis relancez la commande.", ephemeral=True)
                 try:
                     await webhook.delete(reason="Changement du salon du message board")
                 except discord.NotFound:
