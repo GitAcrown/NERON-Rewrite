@@ -193,9 +193,9 @@ class Events(commands.Cog):
         tz = self.get_timezone(member.guild)
         
         if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz))
+            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         else:
-            message = EVENTS_TYPES['on_member_join']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz))
+            message = EVENTS_TYPES['on_member_join']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.Cog.listener()
@@ -211,9 +211,9 @@ class Events(commands.Cog):
         tz = self.get_timezone(member.guild)
         
         if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz))
+            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         else:
-            message = EVENTS_TYPES['on_member_remove']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz))
+            message = EVENTS_TYPES['on_member_remove']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.Cog.listener()
@@ -229,9 +229,9 @@ class Events(commands.Cog):
         tz = self.get_timezone(guild)
         
         if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz))
+            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         else:
-            message = EVENTS_TYPES['on_member_ban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz))
+            message = EVENTS_TYPES['on_member_ban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.Cog.listener()
@@ -247,9 +247,9 @@ class Events(commands.Cog):
         tz = self.get_timezone(guild)
         
         if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz))
+            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         else:
-            message = EVENTS_TYPES['on_member_unban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz))
+            message = EVENTS_TYPES['on_member_unban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
         
 async def setup(bot):
