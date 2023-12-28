@@ -1,10 +1,5 @@
-import asyncio
-import imp
 import logging
-import random
-import re
-from datetime import datetime, timezone, tzinfo
-from numpy import isin
+from datetime import datetime,tzinfo
 import pytz
 
 import discord
@@ -13,8 +8,6 @@ from discord.ext import commands, tasks
 
 from cogs.core.core import Core
 from common import dataio
-from common.utils import fuzzy
-from common.utils.pretty import DEFAULT_EMBED_COLOR
 
 logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
 
@@ -152,9 +145,11 @@ class Birthdays(commands.Cog):
         channel_id = self.data.get_keyvalue_table_value(guild, 'settings', 'NotificationChannelID', cast=int)
         return guild.get_channel(channel_id) if channel_id else None
     
-    def get_timezone(self, guild: discord.Guild) -> tzinfo:
+    def get_timezone(self, guild: discord.Guild | None = None) -> tzinfo:
+        if not guild:
+            return pytz.timezone('Europe/Paris')
         tz = self.core.get_guild_global_setting(guild, 'Timezone')
-        return pytz.timezone(tz)
+        return pytz.timezone(tz) 
     
     def is_notification_hour(self, guild: discord.Guild) -> bool:
         """Vérifie si c'est l'heure d'envoyer les notifications d'anniversaire (heure définie dans les paramètres du serveur)"""
@@ -200,7 +195,7 @@ class Birthdays(commands.Cog):
         if isinstance(user, discord.Member):
             tz = self.get_timezone(user.guild)
         else:
-            tz = pytz.timezone('Europe/Paris')
+            tz = self.get_timezone()
         
         dt = date.replace(year=datetime.now().year).astimezone(tz)
         msg = f"**Date ·** {dt.strftime('%d/%m')}\n"
