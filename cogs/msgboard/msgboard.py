@@ -143,7 +143,7 @@ class MsgBoard(commands.Cog):
         threshold = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Threshold')
         emoji = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Emoji')
         
-        text = f"`{emoji}` **Message populaire** • Ce message possède {threshold}{emoji} et sera reposté s'il atteint {current_votes}{emoji} !"
+        text = f"`{emoji}` **Popularité montante** • Ce message possède {current_votes} votes et sera reposté s'il atteint {threshold}{emoji} !"
         notif_msg = await message.reply(text, mention_author=False)
         self.set_message_history(message, notification_id=notif_msg.id)
         
