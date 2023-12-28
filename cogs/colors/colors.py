@@ -521,9 +521,10 @@ class Colors(commands.Cog):
             if role.position >= interaction.guild.me.top_role.position:
                 txt += "\n**[!] Important :** Le rôle maître doit être __en-dessous__ de mon rôle le plus haut pour que je puisse ordonner les rôles de couleur dans la liste des rôles."
         
+        await interaction.response.defer()
         self.set_master_role(interaction.guild, role)
         await self.reorganize_color_roles(interaction.guild)
-        await interaction.response.send_message(txt, ephemeral=True)
+        await interaction.followup.send(txt, ephemeral=True)
         
     @config_group.command(name='reorganize')
     async def reorganize_color_command(self, interaction: Interaction):
