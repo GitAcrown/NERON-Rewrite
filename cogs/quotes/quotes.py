@@ -67,13 +67,8 @@ class QuotifyView(discord.ui.View):
         message_url = self.selected_messages[0].jump_url
         new_view.add_item(discord.ui.Button(label="Source", url=message_url, style=discord.ButtonStyle.link))
         
-        msg = None
         if self.interaction:
-            msg = await self.interaction.edit_original_response(view=new_view)
-            
-        if msg:
-            image_url = msg.attachments[0].url
-            self.log_generated_quote(' '.join([m.content for m in self.selected_messages]), image_url, self.selected_messages[0].jump_url, self.selected_messages[0].author.id)
+            await self.interaction.edit_original_response(view=new_view)
             
     async def start(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -99,12 +94,6 @@ class QuotifyView(discord.ui.View):
                 await self.interaction.edit_original_response(content=str(e), view=None)
             return None
         
-    def log_generated_quote(self, full_content: str, generated_image_url: str, message_url: str, author_id: int):
-        guild = self.interaction.guild if self.interaction else None
-        if not guild:
-            return
-        self.__cog.log_quote(guild, full_content, generated_image_url, message_url, author_id)
-        
     @discord.ui.button(label="Enregistrer", style=discord.ButtonStyle.green, row=1)
     async def save_quit(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -112,14 +101,9 @@ class QuotifyView(discord.ui.View):
         message_url = self.selected_messages[0].jump_url
         new_view.add_item(discord.ui.Button(label="Aller au message", url=message_url, style=discord.ButtonStyle.link))
         
-        msg = None
         if self.interaction:
-            msg = await self.interaction.edit_original_response(view=new_view)
-        
-        if msg:
-            image_url = msg.attachments[0].url
-            self.log_generated_quote(' '.join([m.content for m in self.selected_messages]), image_url, self.selected_messages[0].jump_url, self.selected_messages[0].author.id)
-            
+            await self.interaction.edit_original_response(view=new_view)
+
         self.stop()
         
     @discord.ui.button(label="Annuler", style=discord.ButtonStyle.red, row=1)
@@ -153,18 +137,6 @@ class Quotes(commands.Cog):
         assets['quotemark_white'] = Image.open(str(assets_path / 'quotemark_white.png')).convert('RGBA')
         assets['quotemark_black'] = Image.open(str(assets_path / 'quotemark_black.png')).convert('RGBA')
         return assets
-    
-    # Nettoyage des citations --------------------------------------------------
-    
-    @tasks.loop(hours=24)
-    async def clean_quotes(self):
-        """Nettoie les citations générées il y a plus d'un mois"""
-        for guild in self.bot.guilds:
-            if not isinstance(guild, discord.Guild):
-                continue
-            query = """DELETE FROM quote_logs WHERE timestamp < ?"""
-            self.data.get(guild).execute(query, (int(datetime.now().timestamp()) - QUOTE_EXPIRATION,))
-
         
     # Génération de citations -------------------------------------------------
     
