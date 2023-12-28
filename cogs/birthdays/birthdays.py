@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from cogs.core.core import Core
 from common import dataio
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 class Birthdays(commands.Cog):
     """Tracking des anniversaires des membres du serveur"""
@@ -43,22 +43,17 @@ class Birthdays(commands.Cog):
     async def on_ready(self):
         self.birthdays_loop.start()
         
-        self.core : Core = self.bot.get_cog('Core') # type: ignore
-        if not self.core:
-            raise RuntimeError("Impossible de charger le module Core")
-        
     def cog_unload(self):
         self.birthdays_loop.cancel()
         self.data.close_all()
-
         
     # Loop ------------------------------------------------------------------
     
     @tasks.loop(seconds=30)
     async def birthdays_loop(self):
-        if self.last_check != datetime.now().strftime('%d/%m:%H'):
-            self.last_check = datetime.now().strftime('%d/%m:%H')
-            logger.info(f"Vérification des anniversaires, période : {self.last_check}")
+        if self.last_check != datetime.now().strftime('%d/%m-%H'):
+            self.last_check = datetime.now().strftime('%d/%m-%H')
+            logger.info(f"Vérification des anniversaires ({self.last_check})")
             for guild in self.bot.guilds:
                 birthdays = self.get_birthdays_today(guild)
                 if not birthdays:
@@ -148,7 +143,10 @@ class Birthdays(commands.Cog):
     def get_timezone(self, guild: discord.Guild | None = None) -> tzinfo:
         if not guild:
             return pytz.timezone('Europe/Paris')
-        tz = self.core.get_guild_global_setting(guild, 'Timezone')
+        core : Core = self.bot.get_cog('Core') # type: ignore
+        if not core:
+            return pytz.timezone('Europe/Paris')
+        tz = core.get_guild_global_setting(guild, 'Timezone')
         return pytz.timezone(tz) 
     
     def is_notification_hour(self, guild: discord.Guild) -> bool:
@@ -164,9 +162,8 @@ class Birthdays(commands.Cog):
         now = datetime.now(tz)
         return now.hour == 0
     
-    def set_notification_hour(self, guild: discord.Guild, hour: int, tz: str):
+    def set_notification_hour(self, guild: discord.Guild, hour: int):
         self.data.set_keyvalue_table_value(guild, 'settings', 'NotificationHour', hour)
-        self.data.set_keyvalue_table_value(guild, 'settings', 'Timezone', tz)
     
     def get_birthday_role(self, guild: discord.Guild) -> discord.Role | None:
         role_id = self.data.get_keyvalue_table_value(guild, 'settings', 'BirthdayRoleID', cast=int)
@@ -374,6 +371,30 @@ class Birthdays(commands.Cog):
         else:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'BirthdayRoleID', 0)
             await interaction.response.send_message("**Rôle supprimé** • Aucun rôle ne sera attribué aux membres le jour de leur anniversaire")
+
+    # OWNER ONLY ===============================================================
+    
+    @commands.command(name="bulksetbday", hidden=True)
+    @commands.is_owner()
+    async def bulk_set_bday_command(self, ctx: commands.Context, *mapping: str):
+        """Définir la date d'anniversaire de plusieurs utilisateurs en même temps
+        
+        :param mapping: Mapping au format user_id:jj/mm"""
+        data = {}
+        for line in mapping:
+            if not line:
+                continue
+            user_id, bday = line.split(':')
+            data[user_id] = bday.strip()
+        result = '## Utilisateurs mis à jour :\n'
+        for user_id, bday in data.items():
+            user = self.bot.get_user(int(user_id))
+            if not user:
+                result += f"> **{user_id}** · Utilisateur introuvable\n"
+                continue
+            self.set_user_birthday(user, bday)
+            result += f"> **{user}** · `{bday}`\n"
+        await ctx.send(result)
 
 async def setup(bot):
     await bot.add_cog(Birthdays(bot))
