@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from common import dataio
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 INVALID_COLOR = 0x000000 # Utilisé par Discord pour les rôles sans couleur
 COLOR_ROLE_NAME_PATTERN = r'^#?([0-9a-fA-F]{6})$' # ex. #ff0000

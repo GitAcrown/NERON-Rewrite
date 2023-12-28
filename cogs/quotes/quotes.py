@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from common import dataio
 from common.utils import pretty
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 QUOTE_EXPIRATION = 60 * 60 * 24 * 30 # 30 jours
 

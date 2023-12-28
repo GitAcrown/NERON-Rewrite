@@ -10,7 +10,7 @@ from common import dataio
 from common.utils import fuzzy
 from common.utils.pretty import DEFAULT_EMBED_COLOR
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 DEFAULT_TRIGGERS = [
     {'label': 'twitter.com', 'search': 'https://twitter.com/', 'replace': 'https://vxtwitter.com/'},

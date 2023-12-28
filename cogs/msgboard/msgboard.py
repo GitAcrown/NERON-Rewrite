@@ -10,7 +10,7 @@ from discord.ext import commands, tasks
 
 from common import dataio
 
-logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
+logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 HISTORY_EXPIRATION = 60 * 60 * 72 # 3 jours
 
