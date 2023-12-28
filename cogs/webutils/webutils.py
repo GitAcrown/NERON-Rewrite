@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import re
-from datetime import datetime
 
 import discord
 from discord import Interaction, app_commands

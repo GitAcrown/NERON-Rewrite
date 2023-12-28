@@ -8,13 +8,12 @@ from contextlib import redirect_stdout
 from typing import Any, Optional
 
 import discord
+import pytz
 from discord import app_commands
 from discord.ext import commands
-import pytz
-from traitlets import default
 
-from common.utils import fuzzy
 from common import dataio
+from common.utils import fuzzy
 
 logger = logging.getLogger(f'NERON.{__name__.capitalize()}')
 
