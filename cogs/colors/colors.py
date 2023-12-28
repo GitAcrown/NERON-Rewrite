@@ -486,7 +486,7 @@ class Colors(commands.Cog):
         em = discord.Embed(description=text, color=new_role.color)
         await interaction.followup.send(embed=em, ephemeral=True)
         
-    config_group = app_commands.Group(name='rcolors', description="Configuration du système de rôles de couleur", guild_only=True, default_permissions=discord.Permissions(manage_roles=True))
+    config_group = app_commands.Group(name='config-colors', description="Configuration du système de rôles de couleur", guild_only=True, default_permissions=discord.Permissions(manage_roles=True))
     
     @config_group.command(name='enable')
     @app_commands.rename(enabled='activer')

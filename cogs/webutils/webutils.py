@@ -166,7 +166,7 @@ class WebUtils(commands.Cog):
     # Configuration ===============================================================
     
     fixlinks_group = app_commands.Group(name='fixlinks',
-                                      description="Configuration de la correction de liens",
+                                      description="Système de correction automatique de liens",
                                       guild_only=True,
                                       default_permissions=discord.Permissions(manage_messages=True))
     

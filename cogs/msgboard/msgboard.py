@@ -223,7 +223,7 @@ class MsgBoard(commands.Cog):
     # Configuration ============================================================
     
     config_group = app_commands.Group(name='msgboard',
-                                      description="Configuration du salon de compilation des meilleurs messages",
+                                      description="Gestion du salon de compilation des meilleurs messages",
                                       guild_only=True,
                                       default_permissions=discord.Permissions(manage_messages=True))
         
