@@ -1,7 +1,6 @@
-import asyncio
 import logging
 from datetime import datetime, tzinfo
-from typing import Any
+from os import times
 
 import aiohttp
 import discord
@@ -10,8 +9,8 @@ from discord.ext import commands, tasks
 import pytz
 
 from common import dataio
-from common.utils.pretty import DEFAULT_EMBED_COLOR
-from common.utils import fuzzy
+from common.utils.pretty import DEFAULT_EMBED_COLOR, shorten_text
+from common.utils import fuzzy, interface
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -38,8 +37,34 @@ EVENTS_TYPES = {
     }
 }
 
+class RegisterToReminderView(discord.ui.View):
+    """Ajoute un bouton permettant de s'inscrire à un rappel"""
+    def __init__(self, cog: 'Events', reminder_data: dict, *, timeout: float | None = 30):
+        super().__init__(timeout=timeout)
+        self.__cog = cog
+        self.reminder_data = reminder_data
+        
+        self.interaction : Interaction | None = None
+        
+    async def on_timeout(self):
+        if self.interaction:
+            await self.interaction.response.edit_message(view=None)
+            
+    @discord.ui.button(label="Être notifié", style=discord.ButtonStyle.primary)
+    async def register(self, interaction: Interaction, button: discord.ui.Button):
+        reminder_id = self.reminder_data['id']
+        user = interaction.user
+        if not isinstance(user, discord.Member) or not isinstance(interaction.guild, discord.Guild):
+            return
+
+        if self.__cog.add_reminder_user(interaction.guild, reminder_id, user.id):
+            await interaction.response.send_message(f"**Inscription** • Vous avez été inscrit au rappel #{reminder_id}.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"**Inscription** • Vous êtes déjà inscrit au rappel #{reminder_id}.", ephemeral=True)
+            
+            
 class Events(commands.Cog):
-    """Suivi d'évenements sur le serveur"""
+    """Suivi d'évenements sur le serveur et rappels"""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.data = dataio.get_cog_data(self)
@@ -53,10 +78,121 @@ class Events(commands.Cog):
                 custom_message TEXT DEFAULT NULL
                 )"""
         )
-        self.data.register_tables_for(discord.Guild, [trackers])
+        # Rappels personnalisés
+        reminders = dataio.TableInitializer(
+            table_name='reminders',
+            create_query="""CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                channel_id INTEGER NOT NULL,
+                author_id INTEGER NOT NULL,
+                userlist TEXT DEFAULT NULL
+                )"""
+        )
+        self.data.register_tables_for(discord.Guild, [trackers, reminders])
+        
+        self.__reminders_cache : dict[int, list[dict]] = {}
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialise les tâches"""
+        self.reminders_loop.start()
+        
+        for guild in self.bot.guilds:
+            self.update_reminders_cache(guild)
         
     def cog_unload(self):
         self.data.close_all()
+        self.reminders_loop.cancel()
+        
+    # TACHES ============================================
+    
+    @tasks.loop(seconds=20)
+    async def reminders_loop(self):
+        """Vérifie les rappels et envoie les notifications"""
+        cache = self.__reminders_cache.copy()
+        for guild_id, reminders in cache.items():
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                continue
+            for reminder in reminders:
+                if int(reminder['timestamp']) <= datetime.now(tz=None).timestamp():
+                    await self.handle_reminder(guild, reminder['id'])
+        
+    # EVENTS ============================================
+    
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        tracker = self.get_tracker(member.guild, 'on_member_join')
+        if not tracker:
+            return
+        
+        channel = member.guild.get_channel(tracker['channel_id'])
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
+        
+        tz = self.get_timezone(member.guild)
+        
+        if tracker['custom_message']:
+            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        else:
+            message = EVENTS_TYPES['on_member_join']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        tracker = self.get_tracker(member.guild, 'on_member_remove')
+        if not tracker:
+            return
+        
+        channel = member.guild.get_channel(tracker['channel_id'])
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
+        
+        tz = self.get_timezone(member.guild)
+        
+        if tracker['custom_message']:
+            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        else:
+            message = EVENTS_TYPES['on_member_remove']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
+        tracker = self.get_tracker(guild, 'on_member_ban')
+        if not tracker:
+            return
+        
+        channel = guild.get_channel(tracker['channel_id'])
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
+        
+        tz = self.get_timezone(guild)
+        
+        if tracker['custom_message']:
+            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        else:
+            message = EVENTS_TYPES['on_member_ban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User):
+        tracker = self.get_tracker(guild, 'on_member_unban')
+        if not tracker:
+            return
+        
+        channel = guild.get_channel(tracker['channel_id'])
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
+        
+        tz = self.get_timezone(guild)
+        
+        if tracker['custom_message']:
+            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        else:
+            message = EVENTS_TYPES['on_member_unban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
     
     # Gestion des trackers ------------------------------
     
@@ -80,6 +216,139 @@ class Events(commands.Cog):
         """Supprime le tracker d'un type donné"""
         self.data.get(guild).execute("""DELETE FROM trackers WHERE event_type = ?""", (event_type,))
         
+    # Gestion des rappels -------------------------------
+    
+    def get_reminders(self, guild: discord.Guild):
+        """Renvoie les rappels actifs sur le serveur"""
+        r = self.data.get(guild).fetchall('SELECT * FROM reminders')
+        return r
+        
+    def get_reminder(self, guild: discord.Guild, reminder_id: int) -> dict | None:
+        """Renvoie le rappel d'un id donné"""
+        r = self.data.get(guild).fetchone('SELECT * FROM reminders WHERE id = ?', (reminder_id,))
+        return r if r else None
+        
+    def set_reminder(self, guild: discord.Guild, content: str, timestamp: int, channel: discord.TextChannel | discord.Thread, author: discord.Member, userlist: list[discord.Member] = []):
+        """Définit un rappel"""
+        users = ','.join([str(u.id) for u in userlist])
+        self.data.get(guild).execute("""INSERT INTO reminders VALUES (NULL, ?, ?, ?, ?, ?)""", (content, timestamp, channel.id, author.id, users))
+        self.update_reminders_cache(guild)
+        
+    def remove_reminder(self, guild: discord.Guild, reminder_id: int):
+        """Supprime un rappel"""
+        self.data.get(guild).execute("""DELETE FROM reminders WHERE id = ?""", (reminder_id,))
+        self.update_reminders_cache(guild)
+        
+    def get_reminders_cache(self, guild: discord.Guild) -> list[dict]:
+        """Renvoie le cache des rappels"""
+        if guild.id not in self.__reminders_cache:
+            self.__reminders_cache[guild.id] = []
+        return self.__reminders_cache[guild.id]
+        
+    def update_reminders_cache(self, guild: discord.Guild):
+        """Met à jour le cache des rappels"""
+        self.__reminders_cache[guild.id] = self.get_reminders(guild)
+        
+    def get_reminder_users(self, guild: discord.Guild, reminder_id: int) -> list[discord.Member]:
+        """Renvoie la liste des utilisateurs inscrits à un rappel"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return []
+        if not reminder['userlist']:
+            return []
+        l = [int(u) for u in reminder['userlist'].split(',')]
+        members = {m.id: m for m in guild.members}
+        return [members[m] for m in members if m in l]
+    
+    def add_reminder_user(self, guild: discord.Guild, reminder_id: int, user_id: int) -> bool:
+        """Ajoute un utilisateur à un rappel
+        
+        :return: True si l'utilisateur a été ajouté, False sinon"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return False
+        if not reminder['userlist']:
+            userlist = str(user_id)
+        elif str(user_id) not in reminder['userlist'].split(','):
+            userlist = f"{reminder['userlist']},{user_id}"
+        else:
+            return False
+        self.data.get(guild).execute("""UPDATE reminders SET userlist = ? WHERE id = ?""", (userlist, reminder_id))
+        self.update_reminders_cache(guild)
+        return True
+        
+    def remove_reminder_user(self, guild: discord.Guild, reminder_id: int, user_id: int):
+        """Supprime un utilisateur d'un rappel"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return
+        if not reminder['userlist']:
+            return
+        userlist = [int(u) for u in reminder['userlist'].split(',')]
+        if user_id not in userlist:
+            return
+        userlist.remove(user_id)
+        userlist = ','.join([str(u) for u in userlist])
+        self.data.get(guild).execute("""UPDATE reminders SET userlist = ? WHERE id = ?""", (userlist, reminder_id))
+        self.update_reminders_cache(guild)
+    
+    def get_reminder_channel(self, guild: discord.Guild, reminder_id: int) -> discord.TextChannel | discord.Thread | None:
+        """Renvoie le salon de notification d'un rappel"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return None
+        channel = guild.get_channel(reminder['channel_id'])
+        if not channel or not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            return None
+        return channel
+        
+    def get_reminder_embed(self, guild: discord.Guild, reminder_id: int) -> discord.Embed | None:
+        """Renvoie l'embed d'un rappel"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return None
+        timestamp = int(reminder['timestamp'])
+        em = discord.Embed(title=f"Rappel `#{reminder['id']}`", description=reminder['content'], color=DEFAULT_EMBED_COLOR)
+        em.add_field(name="Date", value=f"<t:{timestamp}:R>")
+        em.add_field(name="Salon", value=f"<#{reminder['channel_id']}>")
+        author = guild.get_member(reminder['author_id'])
+        if not author:
+            author = self.bot.user
+        return em
+    
+    def small_reminder_embed(self, guild: discord.Guild, reminder_id: int) -> discord.Embed | None:
+        """Renvoie un embed réduit pour un rappel"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return None
+        timestamp = int(reminder['timestamp'])
+        em = discord.Embed(title=f"Rappel `#{reminder['id']}`", description=reminder['content'], color=DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(timestamp))
+        author = guild.get_member(reminder['author_id'])
+        if not author:
+            author = self.bot.user
+        if author:
+            em.set_author(name=author.display_name, icon_url=author.display_avatar.url)
+        return em
+    
+    async def handle_reminder(self, guild: discord.Guild, reminder_id: int):
+        """Envoie une notification pour un rappel puis le supprime"""
+        reminder = self.get_reminder(guild, reminder_id)
+        if not reminder:
+            return
+        channel = self.get_reminder_channel(guild, reminder_id)
+        if not channel:
+            return
+        embed = self.small_reminder_embed(guild, reminder_id)
+        if not embed:
+            return
+        users = self.get_reminder_users(guild, reminder_id)
+        if not users:
+            await channel.send(embed=embed)
+        else:
+            mentions = ' '.join([u.mention for u in users])
+            await channel.send(content=mentions, embed=embed)
+        self.remove_reminder(guild, reminder_id)
+        
     # Utilitaires ---------------------------------------
     
     def get_timezone(self, guild: discord.Guild | None = None) -> tzinfo:
@@ -90,8 +359,46 @@ class Events(commands.Cog):
             return pytz.timezone('Europe/Paris')
         tz = core.get_guild_global_setting(guild, 'Timezone')
         return pytz.timezone(tz) 
+    
+    def extract_time_from_string(self, string: str, tz: tzinfo) -> datetime | None:
+        """Extrait une date d'une chaîne de caractères
+        
+        :param string: Chaîne de caractères à analyser
+        :param tz: Fuseau horaire à utiliser
+        :return: Date extraite ou None
+        """
+        now = datetime.now()
+        formats = [
+            '%d/%m/%Y %H:%M',
+            '%d/%m/%Y %H',
+            '%d/%m/%Y',
+            '%d/%m %H:%M',
+            '%d/%m',
+            '%d',
+            '%H',
+            '%H:%M'
+        ]
+        date = None
+        for format in formats:
+            try:
+                date = datetime.strptime(string, format)
+                break
+            except ValueError:
+                pass
+        if date is None:
+            date = now
+        if date.year == 1900:
+            date = date.replace(year=now.year)
+        if date.month == 1:
+            date = date.replace(month=now.month)
+        if date.day == 1:   
+            date = date.replace(day=now.day)
+            
+        return date.replace(tzinfo=tz)
         
     # COMMANDES =========================================
+    
+    # TRACKERS ------------------------------------------
     
     trackers_group = app_commands.Group(name='trackers', description="Gestion des trackers d'évènements", guild_only=True, default_permissions=discord.Permissions(manage_guild=True))
     
@@ -178,79 +485,169 @@ class Events(commands.Cog):
         elements = EVENTS_TYPES[current_type]['format']
         return [app_commands.Choice(name=f'{{{k}}}', value=f'{{{k}}}') for k, _ in elements.items()]
     
-    # EVENTS ============================================
+    # RAPPELS -------------------------------------------
     
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        tracker = self.get_tracker(member.guild, 'on_member_join')
-        if not tracker:
-            return
+    reminders_group = app_commands.Group(name='reminder', description="Gestion des rappels", guild_only=True)
+    
+    @reminders_group.command(name='list')
+    @app_commands.rename(all_reminders='tous')
+    async def list_reminders_command(self, interaction: Interaction, all_reminders: bool = False):
+        """Affiche la liste des rappels auxquels vous êtes inscrit
         
-        channel = member.guild.get_channel(tracker['channel_id'])
-        if not channel or not isinstance(channel, discord.TextChannel):
-            return
+        :param all_reminders: Afficher tous les rappels du serveur (facultatif)"""
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
         
-        tz = self.get_timezone(member.guild)
+        await interaction.response.defer(ephemeral=True)
+        reminders = self.get_reminders(interaction.guild)
+        if not reminders:
+            return await interaction.followup.send("**Aucun rappel** • Aucun rappel n'est actuellement actif sur ce serveur.", ephemeral=True)
         
-        if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
+        if not all_reminders:
+            reminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
+        if not reminders:
+            return await interaction.followup.send("**Aucun rappel** • Vous n'êtes inscrit à aucun rappel sur ce serveur.", ephemeral=True)
+        
+        embeds = []
+        current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
+        for r in reminders:
+            if len(current_embed.fields) >= 20:
+                current_embed.set_footer(text=f"Page {len(embeds)+1}")
+                embeds.append(current_embed)
+                current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
+            title = f"**#{r['id']}**"
+            content = f"*{r['content']}*\n**Date** : <t:{int(r['timestamp'])}:R>\n**Salon** : <#{r['channel_id']}>"
+            current_embed.add_field(name=title, value=content, inline=False)
+        current_embed.set_footer(text=f"Page {len(embeds)+1}")
+        embeds.append(current_embed)
+        
+        if len(embeds) == 1:
+            await interaction.followup.send(embed=embeds[0])
         else:
-            message = EVENTS_TYPES['on_member_join']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+            view = interface.EmbedPaginatorMenu(embeds=embeds, timeout=60, users=[interaction.user])
+            await view.start(interaction)
+            
+    @reminders_group.command(name='create')
+    @app_commands.rename(content='contenu', time='date', self_register='sinscrire')
+    async def create_reminder_command(self, interaction: Interaction, content: str, time: str, *, self_register: bool = True):
+        """Créer un rappel
+
+        :param content: Contenu du rappel
+        :param time: Date du rappel au format JJ/MM HH:MM
+        :param self_register: Vous inscrire au rappel (activé par défaut)
+        """
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
         
-    @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
-        tracker = self.get_tracker(member.guild, 'on_member_remove')
-        if not tracker:
-            return
+        channel = interaction.channel
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            return await interaction.response.send_message(f"**Salon invalide** • Le salon `{channel}` n'est pas un salon écrit valide.", ephemeral=True)
         
-        channel = member.guild.get_channel(tracker['channel_id'])
-        if not channel or not isinstance(channel, discord.TextChannel):
-            return
+        if not channel.permissions_for(interaction.guild.me).send_messages:
+            return await interaction.response.send_message(f"**Permissions insuffisantes** • Je n'ai pas la permission d'envoyer des messages dans le salon {channel.mention}.", ephemeral=True)
         
-        tz = self.get_timezone(member.guild)
+        tz = self.get_timezone(interaction.guild)
+        date = self.extract_time_from_string(time, tz)
+        if not date:
+            return await interaction.response.send_message(f"**Date invalide** • La date `{time}` n'est pas valide.", ephemeral=True)
+        if date < datetime.now(tz=tz):
+            return await interaction.response.send_message(f"**Date invalide** • La date `{time}` est déjà passée.", ephemeral=True)
         
-        if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        else:
-            message = EVENTS_TYPES['on_member_remove']['default'].format(member=member, guild=member.guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        # On enregistre le temps en naif
+        date = date.replace(tzinfo=None)
+        self.set_reminder(interaction.guild, content, int(date.timestamp()), channel, interaction.user, [interaction.user] if self_register else [])
         
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
-        tracker = self.get_tracker(guild, 'on_member_ban')
-        if not tracker:
-            return
+        data = self.get_reminders_cache(interaction.guild)[-1]
+        view = RegisterToReminderView(self, data)
+        embed = self.get_reminder_embed(interaction.guild, data['id'])
+        if not embed:
+            return await interaction.response.send_message(f"**Rappel créé** • Le rappel a été créé dans le salon {channel.mention}.")
         
-        channel = guild.get_channel(tracker['channel_id'])
-        if not channel or not isinstance(channel, discord.TextChannel):
-            return
+        await interaction.response.defer()
+        embed.set_footer(text="Cliquez sur le bouton ci-dessous pour aussi être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
+        await interaction.followup.send(f"**Rappel créé** • Le rappel a été créé dans le salon {channel.mention}.", view=view, embed=embed)
+        await view.wait()
+        embed.set_footer(text=f"Utilisez '/reminder register' pour aussi être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
+        await interaction.edit_original_response(embed=embed, view=None)
         
-        tz = self.get_timezone(guild)
+    @create_reminder_command.autocomplete('time')
+    async def autocomplete_time(self, interaction: Interaction, current: str):
+        tz = self.get_timezone(interaction.guild)
+        date = self.extract_time_from_string(current, tz)
+        if not date:
+            return []
+        return [app_commands.Choice(name=date.strftime('%d/%m/%Y %H:%M'), value=date.strftime('%d/%m/%Y %H:%M'))]
         
-        if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        else:
-            message = EVENTS_TYPES['on_member_ban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+    @reminders_group.command(name='delete')
+    @app_commands.rename(reminder_id='rappel')
+    async def delete_reminder_command(self, interaction: Interaction, reminder_id: int):
+        """Supprimer un rappel
+
+        :param reminder_id: Identifiant du rappel
+        """
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
         
-    @commands.Cog.listener()
-    async def on_member_unban(self, guild: discord.Guild, user: discord.User):
-        tracker = self.get_tracker(guild, 'on_member_unban')
-        if not tracker:
-            return
+        reminder = self.get_reminder(interaction.guild, reminder_id)
+        if not reminder:
+            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
         
-        channel = guild.get_channel(tracker['channel_id'])
-        if not channel or not isinstance(channel, discord.TextChannel):
-            return
+        if interaction.user.id != reminder['author_id'] or not interaction.user.guild_permissions.manage_guild:
+            return await interaction.response.send_message(f"**Permissions insuffisantes** • Vous n'êtes pas l'auteur du rappel #{reminder_id}.", ephemeral=True)
         
-        tz = self.get_timezone(guild)
+        self.remove_reminder(interaction.guild, reminder_id)
+        await interaction.response.send_message(f"**Rappel supprimé** • Le rappel #{reminder_id} a été supprimé.", ephemeral=True)
+    
+    @reminders_group.command(name='register')
+    @app_commands.rename(reminder_id='rappel')
+    async def register_reminder_command(self, interaction: Interaction, reminder_id: int):
+        """S'inscrire à un rappel
+
+        :param reminder_id: Identifiant du rappel
+        """
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
         
-        if tracker['custom_message']:
-            message = tracker['custom_message'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        else:
-            message = EVENTS_TYPES['on_member_unban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
-        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        reminder = self.get_reminder(interaction.guild, reminder_id)
+        if not reminder:
+            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
         
+        if interaction.user.id in [int(u) for u in reminder['userlist'].split(',')]:
+            return await interaction.response.send_message(f"**Déjà inscrit** • Vous êtes déjà inscrit au rappel #{reminder_id}.", ephemeral=True)
+        
+        self.add_reminder_user(interaction.guild, reminder_id, interaction.user.id)
+        await interaction.response.send_message(f"**Inscription** • Vous avez été inscrit au rappel #{reminder_id}.", ephemeral=True)
+        
+    @reminders_group.command(name='unregister')
+    @app_commands.rename(reminder_id='rappel')
+    async def unregister_reminder_command(self, interaction: Interaction, reminder_id: int):
+        """Se désinscrire d'un rappel
+
+        :param reminder_id: Identifiant du rappel
+        """
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
+        
+        reminder = self.get_reminder(interaction.guild, reminder_id)
+        if not reminder:
+            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
+        
+        if interaction.user.id not in [int(u) for u in reminder['userlist'].split(',')]:
+            return await interaction.response.send_message(f"**Non inscrit** • Vous n'êtes pas inscrit au rappel #{reminder_id}.", ephemeral=True)
+        
+        self.remove_reminder_user(interaction.guild, reminder_id, interaction.user.id)
+        await interaction.response.send_message(f"**Désinscription** • Vous avez été désinscrit du rappel #{reminder_id}.", ephemeral=True)
+        
+    @delete_reminder_command.autocomplete('reminder_id')
+    @register_reminder_command.autocomplete('reminder_id')
+    @unregister_reminder_command.autocomplete('reminder_id')
+    async def autocomplete_reminder_id(self, interaction: Interaction, current: str):
+        if not isinstance(interaction.guild, discord.Guild):
+            return []
+        reminders = self.get_reminders(interaction.guild)
+        if not reminders:
+            return []
+        return [app_commands.Choice(name=f"#{r['id']} • {shorten_text(r['content'], 30)}", value=r['id']) for r in reminders]
+            
 async def setup(bot):
     await bot.add_cog(Events(bot))
