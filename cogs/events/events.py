@@ -1,16 +1,14 @@
 import logging
 from datetime import datetime, tzinfo
-from os import times
 
-import aiohttp
 import discord
+import pytz
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
-import pytz
 
 from common import dataio
-from common.utils.pretty import DEFAULT_EMBED_COLOR, shorten_text
 from common.utils import fuzzy, interface
+from common.utils.pretty import DEFAULT_EMBED_COLOR, shorten_text
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -545,6 +543,9 @@ class Events(commands.Cog):
         
         if not channel.permissions_for(interaction.guild.me).send_messages:
             return await interaction.response.send_message(f"**Permissions insuffisantes** • Je n'ai pas la permission d'envoyer des messages dans le salon {channel.mention}.", ephemeral=True)
+        
+        if len(content) > 2000:
+            return await interaction.response.send_message(f"**Contenu invalide** • Le contenu du rappel ne doit pas dépasser 2000 caractères.", ephemeral=True)
         
         tz = self.get_timezone(interaction.guild)
         date = self.extract_time_from_string(time, tz)
