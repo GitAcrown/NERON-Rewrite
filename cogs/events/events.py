@@ -487,7 +487,7 @@ class Events(commands.Cog):
     
     # RAPPELS -------------------------------------------
     
-    reminders_group = app_commands.Group(name='reminder', description="Gestion des rappels", guild_only=True)
+    reminders_group = app_commands.Group(name='remindme', description="Gestion des rappels", guild_only=True)
     
     @reminders_group.command(name='list')
     @app_commands.rename(all_reminders='tous')
