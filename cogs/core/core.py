@@ -312,9 +312,9 @@ class Core(commands.Cog):
     @app_commands.command(name="help")
     @app_commands.rename(command='commande')
     async def help(self, interaction: discord.Interaction, command: str | None):
-        """Affiche de l'aide
+        """Affiche l'aide des commandes du bot
         
-        :param command: Nom d'une commande spécifique à afficher
+        :param command: Nom d'une commande spécifique à pointer
         """
         await interaction.response.defer()
         view = HelpMenuView(self, interaction, start_at=command)
