@@ -241,12 +241,15 @@ class MsgBoard(commands.Cog):
         
     @config_group.command(name='channel')
     @app_commands.rename(channel='salon')
-    async def set_msgboard_channel(self, interaction: Interaction, channel: discord.TextChannel):
+    async def set_msgboard_channel(self, interaction: Interaction, channel: discord.TextChannel | None = None):
         """Définit le salon de compilation des meilleurs messages
         
         :param channel: Le salon"""
         if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.channel, (discord.TextChannel | discord.Thread)):
             raise ValueError("L'interaction doit être sur un serveur.")
+        
+        if not channel:
+            return await interaction.response.send_message(f"**Salon du message board** • Le salon actuel du message board est <#{self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Channel')}>.", ephemeral=True)
         
         if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
@@ -295,13 +298,16 @@ class MsgBoard(commands.Cog):
                 
     @config_group.command(name='threshold')
     @app_commands.rename(threshold='seuil', half_notification='notif_moitie')
-    async def set_msgboard_threshold(self, interaction: Interaction, threshold: app_commands.Range[int, 1], half_notification: bool = False):
+    async def set_msgboard_threshold(self, interaction: Interaction, threshold: app_commands.Range[int, 1] | None = None, half_notification: bool = False):
         """Définit le seuil de votes pour qu'un message soit reposté
         
         :param threshold: Seuil pour qu'un message soit reposté
         :param half_notification: True pour activer la notification à la moitié du seuil"""
         if not isinstance(interaction.guild, discord.Guild):
             raise TypeError("La commande doit être utilisée sur un serveur.")
+        
+        if threshold is None:
+            return await interaction.response.send_message(f"**Seuil** • Le seuil actuel pour reposter est {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Threshold')}{' et la notification à la moitié du seuil est activée' if self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'NotifyHalfThreshold', cast=bool) else ''}.", ephemeral=True)
         
         if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
@@ -314,13 +320,16 @@ class MsgBoard(commands.Cog):
         await interaction.response.send_message(f"**Succès** • Le seuil pour reposter a été défini à {threshold}{' et la notification à la moitié du seuil a été activée' if half_notification else ''}.", ephemeral=True)
         
     @config_group.command(name='emoji')
-    async def set_msgboard_emoji(self, interaction: Interaction, emoji: str):
+    async def set_msgboard_emoji(self, interaction: Interaction, emoji: str | None = None):
         """Modifier l'emoji utilisé pour voter
 
         :param emoji: Emoji à utiliser
         """
         if not isinstance(interaction.guild, discord.Guild):
             raise ValueError("L'interaction doit être sur un serveur.")
+        
+        if emoji is None:
+            return await interaction.response.send_message(f"**Emoji de vote** • L'emoji de vote actuel est {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Emoji')}.", ephemeral=True)
         
         if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
@@ -333,13 +342,16 @@ class MsgBoard(commands.Cog):
         
     @config_group.command(name='maxage')
     @app_commands.rename(maxage='age_max')
-    async def set_msg_maxage(self, interaction: Interaction, maxage: app_commands.Range[int, 1, 72]):
+    async def set_msg_maxage(self, interaction: Interaction, maxage: app_commands.Range[int, 1, 72] | None = None):
         """Définit l'âge maximal que ne doit pas dépasser un message pour être reposté
 
         :param maxage: Âge maximal en heures
         """
         if not isinstance(interaction.guild, discord.Guild):
             raise ValueError("L'interaction doit être sur un serveur.")
+        
+        if maxage is None:
+            return await interaction.response.send_message(f"**Âge maximal** • L'âge maximal des messages est actuellement de {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'MaxMessageAge') / 60 / 60} heures.", ephemeral=True)
         
         if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
