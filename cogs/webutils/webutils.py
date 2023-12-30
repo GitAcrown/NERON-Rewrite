@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from common import dataio
 from common.utils import fuzzy
-from common.utils.pretty import DEFAULT_EMBED_COLOR
+from common.utils.pretty import DEFAULT_EMBED_COLOR, DEFAULT_ICONS_EMOJIS
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -23,13 +23,13 @@ DEFAULT_TRIGGERS = [
 
 class CancelButtonView(discord.ui.View):
     """Ajoute un bouton permettant d'annuler la preview et restaurer celle du message original"""
-    def __init__(self, link_message: discord.Message, replace_message: discord.Message, *, timeout: float | None = 8):
+    def __init__(self, link_message: discord.Message, replace_message: discord.Message, *, timeout: float | None = 7):
         super().__init__(timeout=timeout)
         self.link_msg = link_message
         self.replace_msg = replace_message
         self.cancelled = False
 
-    @discord.ui.button(label='Rétablir le lien', style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Rétablir original", style=discord.ButtonStyle.red, emoji=DEFAULT_ICONS_EMOJIS['close'])
     async def cancel(self, interaction: Interaction, button: discord.ui.Button):
         self.cancelled = True
         await self.replace_msg.delete()
