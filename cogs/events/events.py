@@ -1,4 +1,6 @@
+from ast import Return
 import logging
+import re
 from datetime import datetime, tzinfo
 
 import discord
@@ -35,6 +37,8 @@ EVENTS_TYPES = {
     }
 }
 
+SHARE_COOLDOWN_DELAY = 60 # secondes
+
 class SubscribeToReminderView(discord.ui.View):
     """Ajoute un bouton permettant de s'inscrire à un rappel"""
     def __init__(self, cog: 'Events', reminder_data: dict, *, timeout: float | None = 300):
@@ -66,6 +70,12 @@ class Events(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.data = dataio.get_cog_data(self)
+        
+        default_settings = {
+            'EnableReminderShare': 1,
+            'SilentEventMentions': 0
+        }
+        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
 
         # Trackers actifs
         trackers = dataio.TableInitializer(
@@ -91,6 +101,7 @@ class Events(commands.Cog):
         self.data.register_tables_for(discord.Guild, [trackers, reminders])
         
         self.__reminders_cache : dict[int, list[dict]] = {}
+        self.__reminders_share_cooldown : dict[int, int] = {}
         
     @commands.Cog.listener()
     async def on_ready(self):
@@ -191,6 +202,45 @@ class Events(commands.Cog):
         else:
             message = EVENTS_TYPES['on_member_unban']['default'].format(member=user, guild=guild, time=datetime.now(tz=tz).strftime('%H:%M'))
         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+        
+    # Partage des rappels ----------------------------
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Détecte les balises (&rX) de partage de rappel"""
+        if not isinstance(message.guild, discord.Guild):
+            return
+        if message.author.bot:
+            return
+        if not self.data.get_keyvalue_table_value(message.guild, 'settings', 'EnableReminderShare', cast=bool):
+            return
+        if not message.channel.permissions_for(message.guild.me).send_messages:
+            return
+        if not message.content:
+            return
+        if message.author.id in self.__reminders_share_cooldown:
+            if datetime.now().timestamp() - self.__reminders_share_cooldown[message.author.id] < SHARE_COOLDOWN_DELAY:
+                return
+        
+        # Récupération des balises (format : &rX avec X = id du rappel) - On prend que la première balise
+        match = re.search(r'&r(\d+)', message.content.lower())
+        if not match:
+            return
+        reminder_id = int(match.group(1))
+        
+        data = self.get_reminder(message.guild, reminder_id)
+        if not data:
+            return
+        embed = self.get_reminder_embed(message.guild, data['id'])
+        if not embed:
+            return
+        reminder_author = message.guild.get_member(data['author_id'])
+        if not reminder_author:
+            reminder_author = self.bot.user
+        if reminder_author:
+           embed.set_footer(text=f"Utilisez '/remindme subscribe' pour être notifié de ce rappel.", icon_url=reminder_author.display_avatar.url)
+        await message.channel.send(embed=embed, delete_after=120)
+        self.__reminders_share_cooldown[message.author.id] = int(datetime.now().timestamp())
     
     # Gestion des trackers ------------------------------
     
@@ -308,7 +358,10 @@ class Events(commands.Cog):
         timestamp = int(reminder['timestamp'])
         em = discord.Embed(description='## ' + reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
-        em.add_field(name="Sera notifié sur", value=f"<#{reminder['channel_id']}>")
+        em.add_field(name="Notifié sur", value=f"<#{reminder['channel_id']}>")
+        sharing = self.data.get_keyvalue_table_value(guild, 'settings', 'EnableReminderShare', cast=bool)
+        if sharing:
+            em.add_field(name="Partager", value=f"`&r{reminder_id}`")
         author = guild.get_member(reminder['author_id'])
         if not author:
             author = self.bot.user
@@ -520,12 +573,14 @@ class Events(commands.Cog):
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
                 embeds.append(current_embed)
                 current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
-            title = f"ID: `{r['id']}`"
+            title = f"• Rappel `{r['id']}`"
             nb_inscrits = len([int(u) for u in r['userlist'].split(',') if u])
             content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>\n**Inscrits** : {nb_inscrits}"
             current_embed.add_field(name=title, value=content, inline=False)
         if embeds:
             current_embed.set_footer(text=f"Page {len(embeds)+1}")
+        else:
+            current_embed.set_footer(text="Utilisez '&rX' pour partager un rappel.")
         embeds.append(current_embed)
         
         if len(embeds) == 1:
@@ -666,6 +721,32 @@ class Events(commands.Cog):
         if not reminders:
             return []
         return [app_commands.Choice(name=f"#{r['id']} • {shorten_text(r['content'], 30)}", value=r['id']) for r in reminders][:10]
-            
+    
+    config_reminders_group = app_commands.Group(name='config-remindme', description="Configuration du système de rappels", guild_only=True, default_permissions=discord.Permissions(manage_messages=True))
+    
+    @config_reminders_group.command(name='autoshare')
+    @app_commands.rename(autoshare='activer')
+    async def autoshare_reminders_command(self, interaction: Interaction, autoshare: bool):
+        """Activer/désactiver le partage des rappels lorsque l'identifiant est mentionné sur un salon
+        
+        :param autoshare: Activer/désactiver le partage automatique"""
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
+        
+        self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'EnableReminderShare', int(autoshare))
+        await interaction.response.send_message(f"**Partage automatique** • Le partage automatique des rappels a été {'activé' if autoshare else 'désactivé'}.", ephemeral=True)
+    
+    @config_reminders_group.command(name='silent')
+    @app_commands.rename(silent='silencieux')
+    async def silent_reminders_command(self, interaction: Interaction, silent: bool):
+        """Activer/désactiver le mode silencieux pour les mentions lors des rappels
+        
+        :param silent: Activer/désactiver le mode silencieux"""
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
+        
+        self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'SilentEventMentions', int(silent))
+        await interaction.response.send_message(f"**Mode silencieux** • Le mode silencieux a été {'activé' if silent else 'désactivé'}.", ephemeral=True)
+        
 async def setup(bot):
     await bot.add_cog(Events(bot))
