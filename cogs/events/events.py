@@ -254,7 +254,7 @@ class Events(commands.Cog):
             return []
         if not reminder['userlist']:
             return []
-        l = [int(u) for u in reminder['userlist'].split(',')]
+        l = [int(u) for u in reminder['userlist'].split(',') if u]
         members = {m.id: m for m in guild.members}
         return [members[m] for m in members if m in l]
     
@@ -282,7 +282,7 @@ class Events(commands.Cog):
             return
         if not reminder['userlist']:
             return
-        userlist = [int(u) for u in reminder['userlist'].split(',')]
+        userlist = [int(u) for u in reminder['userlist'].split(',') if u]
         if user_id not in userlist:
             return
         userlist.remove(user_id)
@@ -548,7 +548,7 @@ class Events(commands.Cog):
         
         channel = interaction.channel
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
-            return await interaction.response.send_message(f"**Salon invalide** • Le salon `{channel}` n'est pas un salon écrit valide.", ephemeral=True)
+            return await interaction.response.send_message(f"**Salon invalide** • Le salon {channel} n'est pas un salon écrit valide.", ephemeral=True)
         
         if not channel.permissions_for(interaction.guild.me).send_messages:
             return await interaction.response.send_message(f"**Permissions insuffisantes** • Je n'ai pas la permission d'envoyer des messages dans le salon {channel.mention}.", ephemeral=True)
@@ -574,7 +574,7 @@ class Events(commands.Cog):
             return await interaction.response.send_message(f"**Rappel créé** • Le rappel a été créé dans le salon {channel.mention}.")
         
         await interaction.response.defer()
-        embed.set_footer(text="Cliquez sur le bouton ci-dessous pour aussi être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text="Cliquez sur le bouton ci-dessous pour être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
         await interaction.followup.send(f"**Rappel créé** • Ce rappel a été créé pour le salon {channel.mention} :", view=view, embed=embed)
         await view.wait()
         embed.set_footer(text=f"Utilisez '/remindme subscribe' pour être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
@@ -600,13 +600,13 @@ class Events(commands.Cog):
         
         reminder = self.get_reminder(interaction.guild, reminder_id)
         if not reminder:
-            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
+            return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
         
         if interaction.user.id != reminder['author_id'] or not interaction.user.guild_permissions.manage_guild:
             return await interaction.response.send_message(f"**Permissions insuffisantes** • Vous n'êtes pas l'auteur du rappel #{reminder_id}.", ephemeral=True)
         
         self.remove_reminder(interaction.guild, reminder_id)
-        await interaction.response.send_message(f"**Rappel supprimé** • Le rappel #{reminder_id} a été supprimé.", ephemeral=True)
+        await interaction.response.send_message(f"**Rappel supprimé** • Le rappel `#{reminder_id}` a été supprimé.", ephemeral=True)
     
     @reminders_group.command(name='subscribe')
     @app_commands.rename(reminder_id='rappel')
@@ -622,11 +622,19 @@ class Events(commands.Cog):
         if not reminder:
             return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
         
-        if interaction.user.id in [int(u) for u in reminder['userlist'].split(',')]:
+        if interaction.user.id in [int(u) for u in reminder['userlist'].split(',') if u]:
             return await interaction.response.send_message(f"**Déjà inscrit** • Vous êtes déjà inscrit au rappel.", ephemeral=True)
         
+        embed = self.get_reminder_embed(interaction.guild, reminder_id)
+        if not embed:
+            return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        if not await interface.ask_confirm(interaction, f"**Inscription** • Êtes-vous sûr de vouloir vous inscrire à ce rappel ?", embeds=[embed]):
+            return await interaction.followup.send(f"**Inscription annulée** • Vous n'êtes pas inscrit au rappel.", ephemeral=True)
+        
         self.add_reminder_user(interaction.guild, reminder_id, interaction.user.id)
-        await interaction.response.send_message(f"**Inscription** • Vous avez été inscrit au rappel #{reminder_id}.", ephemeral=True)
+        await interaction.followup.send(f"**Inscription** • Vous avez été inscrit au rappel `#{reminder_id}`.", ephemeral=True)
         
     @reminders_group.command(name='unsubscribe')
     @app_commands.rename(reminder_id='rappel')
@@ -642,11 +650,11 @@ class Events(commands.Cog):
         if not reminder:
             return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
         
-        if interaction.user.id not in [int(u) for u in reminder['userlist'].split(',')]:
+        if interaction.user.id not in [int(u) for u in reminder['userlist'].split(',') if u]:
             return await interaction.response.send_message(f"**Non inscrit** • Vous n'êtes pas inscrit au rappel.", ephemeral=True)
         
         self.remove_reminder_user(interaction.guild, reminder_id, interaction.user.id)
-        await interaction.response.send_message(f"**Désinscription** • Vous avez été désinscrit du rappel #{reminder_id}.", ephemeral=True)
+        await interaction.response.send_message(f"**Désinscription** • Vous avez été désinscrit du rappel `#{reminder_id}`.", ephemeral=True)
         
     @delete_reminder_command.autocomplete('reminder_id')
     @subscribe_reminder_command.autocomplete('reminder_id')

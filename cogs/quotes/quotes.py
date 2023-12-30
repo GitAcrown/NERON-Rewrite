@@ -273,7 +273,7 @@ class Quotes(commands.Cog):
         
         await interaction.followup.send(file=discord.File(data, 'quote.png', description="Citation fournie par Inspirobot.me"))
         
-     # Callback ------------------------------------------------------------------
+    # Callback ------------------------------------------------------------------
     
     async def generate_quote_callback(self, interaction: Interaction, message: discord.Message):
         """Callback pour la commande de génération de citation"""

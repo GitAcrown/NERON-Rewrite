@@ -123,8 +123,7 @@ async def ask_confirm(interaction: Interaction,
 
     msg = await interaction.followup.send(content=content, embeds=embeds, view=view, ephemeral=ephemeral, wait=True)
     r = await view.wait()
-    if r is None:
-        await msg.delete()
+    await msg.delete()
+    if r is True:
         return default
-    
     return view.value
