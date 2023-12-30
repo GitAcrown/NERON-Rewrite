@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 
 from common import dataio
 from common.utils import fuzzy, interface
-from common.utils.pretty import DEFAULT_EMBED_COLOR, shorten_text
+from common.utils.pretty import DEFAULT_EMBED_COLOR, DEFAULT_ICONS_EMOJIS, shorten_text
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -37,7 +37,7 @@ EVENTS_TYPES = {
 
 class RegisterToReminderView(discord.ui.View):
     """Ajoute un bouton permettant de s'inscrire à un rappel"""
-    def __init__(self, cog: 'Events', reminder_data: dict, *, timeout: float | None = 30):
+    def __init__(self, cog: 'Events', reminder_data: dict, *, timeout: float | None = 300):
         super().__init__(timeout=timeout)
         self.__cog = cog
         self.reminder_data = reminder_data
@@ -48,7 +48,7 @@ class RegisterToReminderView(discord.ui.View):
         if self.interaction:
             await self.interaction.response.edit_message(view=None)
             
-    @discord.ui.button(label="Être notifié", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Être notifié", style=discord.ButtonStyle.primary, emoji=DEFAULT_ICONS_EMOJIS['ring'])
     async def register(self, interaction: Interaction, button: discord.ui.Button):
         reminder_id = self.reminder_data['id']
         user = interaction.user
@@ -306,9 +306,9 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(title=f"Rappel `#{reminder['id']}`", description=reminder['content'], color=DEFAULT_EMBED_COLOR)
+        em = discord.Embed(description=reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
-        em.add_field(name="Salon", value=f"<#{reminder['channel_id']}>")
+        em.add_field(name="Sera notifié sur", value=f"<#{reminder['channel_id']}>")
         author = guild.get_member(reminder['author_id'])
         if not author:
             author = self.bot.user
@@ -320,12 +320,12 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(title=f"Rappel `#{reminder['id']}`", description=reminder['content'], color=DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(timestamp))
+        em = discord.Embed(description=reminder['content'], color=DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(timestamp))
         author = guild.get_member(reminder['author_id'])
         if not author:
             author = self.bot.user
         if author:
-            em.set_author(name=author.display_name, icon_url=author.display_avatar.url)
+            em.set_footer(text=f"{author.display_name}", icon_url=author.display_avatar.url)
         return em
     
     async def handle_reminder(self, guild: discord.Guild, reminder_id: int):
@@ -513,22 +513,24 @@ class Events(commands.Cog):
             return await interaction.followup.send("**Aucun rappel** • Vous n'êtes inscrit à aucun rappel sur ce serveur.", ephemeral=True)
         
         embeds = []
+        title = "Tous les rappels programmés" if all_reminders else "Vos rappels programmés"
         current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
         for r in reminders:
             if len(current_embed.fields) >= 20:
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
                 embeds.append(current_embed)
                 current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
-            title = f"**#{r['id']}**"
-            content = f"*{r['content']}*\n**Date** : <t:{int(r['timestamp'])}:R>\n**Salon** : <#{r['channel_id']}>"
+            title = f"ID: `{r['id']}`"
+            content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>"
             current_embed.add_field(name=title, value=content, inline=False)
-        current_embed.set_footer(text=f"Page {len(embeds)+1}")
+        if embeds:
+            current_embed.set_footer(text=f"Page {len(embeds)+1}")
         embeds.append(current_embed)
         
         if len(embeds) == 1:
             await interaction.followup.send(embed=embeds[0])
         else:
-            view = interface.EmbedPaginatorMenu(embeds=embeds, timeout=60, users=[interaction.user])
+            view = interface.EmbedPaginatorMenu(embeds=embeds, timeout=30, users=[interaction.user])
             await view.start(interaction)
             
     @reminders_group.command(name='create')
