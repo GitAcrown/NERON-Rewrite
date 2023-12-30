@@ -386,11 +386,17 @@ class Events(commands.Cog):
         if date is None:
             date = now
         if date.year == 1900:
-            date = date.replace(year=now.year)
-        if date.month == 1:
-            date = date.replace(month=now.month)
-        if date.day == 1:   
-            date = date.replace(day=now.day)
+            if date.month < now.month:
+                date = date.replace(year=now.year + 1)
+            elif date.month == now.month and date.day < now.day:
+                date = date.replace(year=now.year + 1)
+            else:
+                date = date.replace(year=now.year)
+                
+            if date.month == 1 and date.year == now.year:
+                date = date.replace(month=now.month)
+            if date.day == 1 and date.month == now.month and date.year == now.year:
+                date = date.replace(day=now.day)
             
         return date.replace(tzinfo=tz)
         
