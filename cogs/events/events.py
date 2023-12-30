@@ -521,7 +521,8 @@ class Events(commands.Cog):
                 embeds.append(current_embed)
                 current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
             title = f"ID: `{r['id']}`"
-            content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>"
+            nb_inscrits = len([int(u) for u in r['userlist'].split(',') if u])
+            content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>\n**Inscrits** : {nb_inscrits}"
             current_embed.add_field(name=title, value=content, inline=False)
         if embeds:
             current_embed.set_footer(text=f"Page {len(embeds)+1}")
