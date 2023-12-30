@@ -393,11 +393,12 @@ class Events(commands.Cog):
         if not embed:
             return
         users = self.get_reminder_users(guild, reminder_id)
+        silent = self.data.get_keyvalue_table_value(guild, 'settings', 'SilentEventMentions', cast=bool)
         if not users:
             await channel.send(embed=embed)
         else:
             mentions = ' '.join([u.mention for u in users])
-            await channel.send(content=mentions, embed=embed)
+            await channel.send(content=mentions, embed=embed, silent=silent)
         self.remove_reminder(guild, reminder_id)
         
     # Utilitaires ---------------------------------------
