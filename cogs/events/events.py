@@ -654,7 +654,7 @@ class Events(commands.Cog):
         reminders = self.get_reminders(interaction.guild)
         if not reminders:
             return []
-        return [app_commands.Choice(name=f"#{r['id']} • {shorten_text(r['content'], 30)}", value=r['id']) for r in reminders]
+        return [app_commands.Choice(name=f"#{r['id']} • {shorten_text(r['content'], 30)}", value=r['id']) for r in reminders][:10]
             
 async def setup(bot):
     await bot.add_cog(Events(bot))
