@@ -239,7 +239,7 @@ class Events(commands.Cog):
             reminder_author = self.bot.user
         if reminder_author:
            embed.set_footer(text=f"Utilisez '/remindme subscribe' pour être notifié de ce rappel.", icon_url=reminder_author.display_avatar.url)
-        await message.channel.send(embed=embed, delete_after=120)
+        await message.channel.send(embed=embed)
         self.__reminders_share_cooldown[message.guild.id] = int(datetime.now().timestamp())
     
     # Gestion des trackers ------------------------------
