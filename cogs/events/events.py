@@ -35,7 +35,7 @@ EVENTS_TYPES = {
     }
 }
 
-class RegisterToReminderView(discord.ui.View):
+class SubscribeToReminderView(discord.ui.View):
     """Ajoute un bouton permettant de s'inscrire à un rappel"""
     def __init__(self, cog: 'Events', reminder_data: dict, *, timeout: float | None = 300):
         super().__init__(timeout=timeout)
@@ -49,7 +49,7 @@ class RegisterToReminderView(discord.ui.View):
             await self.interaction.response.edit_message(view=None)
             
     @discord.ui.button(label="Être notifié", style=discord.ButtonStyle.primary, emoji=DEFAULT_ICONS_EMOJIS['ring'])
-    async def register(self, interaction: Interaction, button: discord.ui.Button):
+    async def subscribe(self, interaction: Interaction, button: discord.ui.Button):
         reminder_id = self.reminder_data['id']
         user = interaction.user
         if not isinstance(user, discord.Member) or not isinstance(interaction.guild, discord.Guild):
@@ -535,13 +535,13 @@ class Events(commands.Cog):
             await view.start(interaction)
             
     @reminders_group.command(name='create')
-    @app_commands.rename(content='contenu', time='date', self_register='sinscrire')
-    async def create_reminder_command(self, interaction: Interaction, content: str, time: str, *, self_register: bool = True):
+    @app_commands.rename(content='contenu', time='date', self_sub='sinscrire')
+    async def create_reminder_command(self, interaction: Interaction, content: str, time: str, *, self_sub: bool = True):
         """Créer un rappel
 
         :param content: Contenu du rappel
         :param time: Date du rappel au format JJ/MM HH:MM
-        :param self_register: Vous inscrire au rappel (activé par défaut)
+        :param self_sub: Vous inscrire au rappel (activé par défaut)
         """
         if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
             return await interaction.response.send_message("**Indisponible** • Cette commande n'est pas disponible en message privé.", ephemeral=True)
@@ -565,19 +565,19 @@ class Events(commands.Cog):
         
         # On enregistre le temps en naif
         date = date.replace(tzinfo=None)
-        self.set_reminder(interaction.guild, content, int(date.timestamp()), channel, interaction.user, [interaction.user] if self_register else [])
+        self.set_reminder(interaction.guild, content, int(date.timestamp()), channel, interaction.user, [interaction.user] if self_sub else [])
         
         data = self.get_reminders_cache(interaction.guild)[-1]
-        view = RegisterToReminderView(self, data)
+        view = SubscribeToReminderView(self, data)
         embed = self.get_reminder_embed(interaction.guild, data['id'])
         if not embed:
             return await interaction.response.send_message(f"**Rappel créé** • Le rappel a été créé dans le salon {channel.mention}.")
         
         await interaction.response.defer()
         embed.set_footer(text="Cliquez sur le bouton ci-dessous pour aussi être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
-        await interaction.followup.send(f"**Rappel créé** • Le rappel a été créé dans le salon {channel.mention}.", view=view, embed=embed)
+        await interaction.followup.send(f"**Rappel créé** • Ce rappel a été créé pour le salon {channel.mention} :", view=view, embed=embed)
         await view.wait()
-        embed.set_footer(text=f"Utilisez '/reminder register' pour aussi être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"Utilisez '/remindme subscribe' pour être notifié du rappel.", icon_url=interaction.user.display_avatar.url)
         await interaction.edit_original_response(embed=embed, view=None)
         
     @create_reminder_command.autocomplete('time')
@@ -608,9 +608,9 @@ class Events(commands.Cog):
         self.remove_reminder(interaction.guild, reminder_id)
         await interaction.response.send_message(f"**Rappel supprimé** • Le rappel #{reminder_id} a été supprimé.", ephemeral=True)
     
-    @reminders_group.command(name='register')
+    @reminders_group.command(name='subscribe')
     @app_commands.rename(reminder_id='rappel')
-    async def register_reminder_command(self, interaction: Interaction, reminder_id: int):
+    async def subscribe_reminder_command(self, interaction: Interaction, reminder_id: int):
         """S'inscrire à un rappel
 
         :param reminder_id: Identifiant du rappel
@@ -628,9 +628,9 @@ class Events(commands.Cog):
         self.add_reminder_user(interaction.guild, reminder_id, interaction.user.id)
         await interaction.response.send_message(f"**Inscription** • Vous avez été inscrit au rappel #{reminder_id}.", ephemeral=True)
         
-    @reminders_group.command(name='unregister')
+    @reminders_group.command(name='unsubscribe')
     @app_commands.rename(reminder_id='rappel')
-    async def unregister_reminder_command(self, interaction: Interaction, reminder_id: int):
+    async def unsubscribe_reminder_command(self, interaction: Interaction, reminder_id: int):
         """Se désinscrire d'un rappel
 
         :param reminder_id: Identifiant du rappel
@@ -649,8 +649,8 @@ class Events(commands.Cog):
         await interaction.response.send_message(f"**Désinscription** • Vous avez été désinscrit du rappel #{reminder_id}.", ephemeral=True)
         
     @delete_reminder_command.autocomplete('reminder_id')
-    @register_reminder_command.autocomplete('reminder_id')
-    @unregister_reminder_command.autocomplete('reminder_id')
+    @subscribe_reminder_command.autocomplete('reminder_id')
+    @unsubscribe_reminder_command.autocomplete('reminder_id')
     async def autocomplete_reminder_id(self, interaction: Interaction, current: str):
         if not isinstance(interaction.guild, discord.Guild):
             return []
