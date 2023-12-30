@@ -306,7 +306,7 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(description='> ' + reminder['content'], color=DEFAULT_EMBED_COLOR)
+        em = discord.Embed(description='## ' + reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
         em.add_field(name="Sera notifié sur", value=f"<#{reminder['channel_id']}>")
         author = guild.get_member(reminder['author_id'])
@@ -320,7 +320,7 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(description=reminder['content'], color=DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(timestamp))
+        em = discord.Embed(description='## ' + reminder['content'], color=DEFAULT_EMBED_COLOR, timestamp=datetime.fromtimestamp(timestamp))
         author = guild.get_member(reminder['author_id'])
         if not author:
             author = self.bot.user
@@ -619,10 +619,10 @@ class Events(commands.Cog):
         
         reminder = self.get_reminder(interaction.guild, reminder_id)
         if not reminder:
-            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
+            return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
         
         if interaction.user.id in [int(u) for u in reminder['userlist'].split(',')]:
-            return await interaction.response.send_message(f"**Déjà inscrit** • Vous êtes déjà inscrit au rappel #{reminder_id}.", ephemeral=True)
+            return await interaction.response.send_message(f"**Déjà inscrit** • Vous êtes déjà inscrit au rappel.", ephemeral=True)
         
         self.add_reminder_user(interaction.guild, reminder_id, interaction.user.id)
         await interaction.response.send_message(f"**Inscription** • Vous avez été inscrit au rappel #{reminder_id}.", ephemeral=True)
@@ -639,10 +639,10 @@ class Events(commands.Cog):
         
         reminder = self.get_reminder(interaction.guild, reminder_id)
         if not reminder:
-            return await interaction.response.send_message(f"**Rappel introuvable** • Le rappel #{reminder_id} n'existe pas.", ephemeral=True)
+            return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
         
         if interaction.user.id not in [int(u) for u in reminder['userlist'].split(',')]:
-            return await interaction.response.send_message(f"**Non inscrit** • Vous n'êtes pas inscrit au rappel #{reminder_id}.", ephemeral=True)
+            return await interaction.response.send_message(f"**Non inscrit** • Vous n'êtes pas inscrit au rappel.", ephemeral=True)
         
         self.remove_reminder_user(interaction.guild, reminder_id, interaction.user.id)
         await interaction.response.send_message(f"**Désinscription** • Vous avez été désinscrit du rappel #{reminder_id}.", ephemeral=True)
