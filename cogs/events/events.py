@@ -611,7 +611,7 @@ class Events(commands.Cog):
     @reminders_group.command(name='subscribe')
     @app_commands.rename(reminder_id='rappel')
     async def subscribe_reminder_command(self, interaction: Interaction, reminder_id: int):
-        """S'inscrire à un rappel
+        """S'inscrire à un rappel déjà créé
 
         :param reminder_id: Identifiant du rappel
         """
@@ -631,7 +631,7 @@ class Events(commands.Cog):
     @reminders_group.command(name='unsubscribe')
     @app_commands.rename(reminder_id='rappel')
     async def unsubscribe_reminder_command(self, interaction: Interaction, reminder_id: int):
-        """Se désinscrire d'un rappel
+        """Se désinscrire d'un rappel créé
 
         :param reminder_id: Identifiant du rappel
         """
