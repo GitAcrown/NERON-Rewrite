@@ -29,7 +29,7 @@ class CancelButtonView(discord.ui.View):
         self.replace_msg = replace_message
         self.cancelled = False
 
-    @discord.ui.button(label="Rétablir original", style=discord.ButtonStyle.red, emoji=DEFAULT_ICONS_EMOJIS['close'])
+    @discord.ui.button(label="Rétablir l'original", style=discord.ButtonStyle.red, emoji=DEFAULT_ICONS_EMOJIS['close'])
     async def cancel(self, interaction: Interaction, button: discord.ui.Button):
         self.cancelled = True
         await self.replace_msg.delete()
