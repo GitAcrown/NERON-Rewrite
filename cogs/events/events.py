@@ -513,8 +513,8 @@ class Events(commands.Cog):
             return await interaction.followup.send("**Aucun rappel** • Vous n'êtes inscrit à aucun rappel sur ce serveur.", ephemeral=True)
         
         embeds = []
-        title = "Tous les rappels programmés" if all_reminders else "Vos rappels programmés"
-        current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
+        emtitle = "Tous les rappels programmés" if all_reminders else "Vos rappels programmés"
+        current_embed = discord.Embed(title=emtitle, color=DEFAULT_EMBED_COLOR)
         for r in reminders:
             if len(current_embed.fields) >= 20:
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
