@@ -44,6 +44,7 @@ class CancelButtonView(discord.ui.View):
     async def on_timeout(self):
         if not self.cancelled:
             await self.replace_msg.edit(view=None)
+            await self.link_msg.edit(suppress=True)
 
 
 class WebUtils(commands.Cog):
