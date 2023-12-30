@@ -14,7 +14,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from common import dataio
-from common.utils import fuzzy
+from common.utils import fuzzy, pretty
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -112,13 +112,13 @@ class HelpMenuView(discord.ui.View):
         embed = self.pages[self.current_page]
         self.message = await self.__interaction.followup.send(embed=embed, view=self)
             
-    @discord.ui.button(label="←", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(style=discord.ButtonStyle.blurple, emoji=pretty.DEFAULT_ICONS_EMOJIS['back'])
     async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Page précédente"""
         self.current_page = self.current_page - 1 if self.current_page > 0 else len(self.pages) - 1
         await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
         
-    @discord.ui.button(label="Fermer", style=discord.ButtonStyle.red)
+    @discord.ui.button(style=discord.ButtonStyle.red, emoji=pretty.DEFAULT_ICONS_EMOJIS['close'])
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Ferme le menu"""
         self.clear_items()
@@ -126,7 +126,7 @@ class HelpMenuView(discord.ui.View):
             await self.message.delete()
         self.stop()
         
-    @discord.ui.button(label="→", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(style=discord.ButtonStyle.blurple, emoji=pretty.DEFAULT_ICONS_EMOJIS['next'])
     async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Page suivante"""
         self.current_page = self.current_page + 1 if self.current_page < len(self.pages) - 1 else 0
