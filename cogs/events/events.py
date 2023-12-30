@@ -325,7 +325,7 @@ class Events(commands.Cog):
         if not author:
             author = self.bot.user
         if author:
-            em.set_footer(text=f"{author.display_name}", icon_url=author.display_avatar.url)
+            em.set_footer(text=f"Rappel de {author.name}", icon_url=author.display_avatar.url)
         return em
     
     async def handle_reminder(self, guild: discord.Guild, reminder_id: int):
