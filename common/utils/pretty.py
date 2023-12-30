@@ -4,6 +4,15 @@ from datetime import datetime, timedelta
 
 DEFAULT_EMBED_COLOR : int = 0x2b2d31 # Couleur pour que la barre de couleur ne soit pas visible
 
+# Disponibles sur https://discord.gg/DGaM4yH
+# A modifier si vous remplacez les emojis par défaut
+DEFAULT_ICONS_EMOJIS = {
+    'back': '<:iconBack:1149814142354599967>',
+    'next': '<:iconNext:1149814237150052513>',
+    'close': '<:iconClose:1149813971239579770>',
+    'ring': '<:iconRing:1190679548287787088>'
+}
+
 # Raccourcis de formattage Discord ---------------------------
 
 def codeblock(text: str, lang: str = '') -> str:
