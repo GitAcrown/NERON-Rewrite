@@ -306,7 +306,7 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(description=reminder['content'], color=DEFAULT_EMBED_COLOR)
+        em = discord.Embed(description='> ' + reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
         em.add_field(name="Sera notifié sur", value=f"<#{reminder['channel_id']}>")
         author = guild.get_member(reminder['author_id'])
