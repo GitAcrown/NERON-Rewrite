@@ -218,8 +218,8 @@ class Events(commands.Cog):
             return
         if not message.content:
             return
-        if message.author.id in self.__reminders_share_cooldown:
-            if datetime.now().timestamp() - self.__reminders_share_cooldown[message.author.id] < SHARE_COOLDOWN_DELAY:
+        if message.guild.id in self.__reminders_share_cooldown:
+            if int(datetime.now().timestamp()) - self.__reminders_share_cooldown[message.guild.id] < SHARE_COOLDOWN_DELAY:
                 return
         
         # Récupération des balises (format : &rX avec X = id du rappel) - On prend que la première balise
@@ -231,7 +231,7 @@ class Events(commands.Cog):
         data = self.get_reminder(message.guild, reminder_id)
         if not data:
             return
-        embed = self.get_reminder_embed(message.guild, data['id'])
+        embed = self.get_reminder_embed(message.guild, data['id'], show_share=False)
         if not embed:
             return
         reminder_author = message.guild.get_member(data['author_id'])
@@ -240,7 +240,7 @@ class Events(commands.Cog):
         if reminder_author:
            embed.set_footer(text=f"Utilisez '/remindme subscribe' pour être notifié de ce rappel.", icon_url=reminder_author.display_avatar.url)
         await message.channel.send(embed=embed, delete_after=120)
-        self.__reminders_share_cooldown[message.author.id] = int(datetime.now().timestamp())
+        self.__reminders_share_cooldown[message.guild.id] = int(datetime.now().timestamp())
     
     # Gestion des trackers ------------------------------
     
@@ -350,7 +350,7 @@ class Events(commands.Cog):
             return None
         return channel
         
-    def get_reminder_embed(self, guild: discord.Guild, reminder_id: int) -> discord.Embed | None:
+    def get_reminder_embed(self, guild: discord.Guild, reminder_id: int, show_share: bool = True) -> discord.Embed | None:
         """Renvoie l'embed d'un rappel"""
         reminder = self.get_reminder(guild, reminder_id)
         if not reminder:
@@ -360,7 +360,7 @@ class Events(commands.Cog):
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
         em.add_field(name="Notifié sur", value=f"<#{reminder['channel_id']}>")
         sharing = self.data.get_keyvalue_table_value(guild, 'settings', 'EnableReminderShare', cast=bool)
-        if sharing:
+        if sharing and show_share:
             em.add_field(name="Partager", value=f"`&r{reminder_id}`")
         author = guild.get_member(reminder['author_id'])
         if not author:
