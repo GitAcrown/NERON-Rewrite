@@ -13,6 +13,7 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from common import dataio
+from common.utils import pretty
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
@@ -61,7 +62,7 @@ class AvatarPreviewSelectMenu(discord.ui.View):
 
     # Boutons ------------------------------------------------------------------
     
-    @discord.ui.button(label='←', style=discord.ButtonStyle.grey)
+    @discord.ui.button(style=discord.ButtonStyle.grey, emoji=pretty.DEFAULT_ICONS_EMOJIS['back'])
     async def previous_button(self, interaction: Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.current_page -= 1
@@ -82,7 +83,7 @@ class AvatarPreviewSelectMenu(discord.ui.View):
         self.stop()
         await interaction.edit_original_response(view=None)
         
-    @discord.ui.button(label='→', style=discord.ButtonStyle.grey)
+    @discord.ui.button(style=discord.ButtonStyle.grey, emoji=pretty.DEFAULT_ICONS_EMOJIS['next'])
     async def next_button(self, interaction: Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.current_page += 1
