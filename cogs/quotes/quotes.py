@@ -64,7 +64,7 @@ class QuotifyView(discord.ui.View):
     async def on_timeout(self):
         new_view = discord.ui.View()
         message_url = self.selected_messages[0].jump_url
-        new_view.add_item(discord.ui.Button(label="Source", url=message_url, style=discord.ButtonStyle.link))
+        new_view.add_item(discord.ui.Button(label="Aller au message", url=message_url, style=discord.ButtonStyle.link))
         
         if self.interaction:
             await self.interaction.edit_original_response(view=new_view)
