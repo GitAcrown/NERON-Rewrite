@@ -189,7 +189,7 @@ class Quotes(commands.Cog):
         with Image.open(avatar).resize(size) as image:
             
             bg_color = colorgram.extract(image.resize((50, 50)), 1)[0].rgb 
-            grad_magnitude = 0.85 + 0.03 * (len(text) // 100)
+            grad_magnitude = 0.85 + 0.05 * (len(text) // 100)
             image = self._add_gradientv2(image, grad_magnitude, bg_color)
             luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
 
