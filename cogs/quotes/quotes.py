@@ -229,7 +229,7 @@ class Quotes(commands.Cog):
         """Ajoute au message initial les messages suivants jusqu'à atteindre la limite de caractères ou de messages"""
         messages = [starting_message]
         total_length = len(starting_message.content)
-        async for message in starting_message.channel.history(limit=25, after=starting_message):
+        async for message in starting_message.channel.history(limit=15, after=starting_message):
             if not message.content or message.content.isspace():
                 continue
             if message.author != starting_message.author:
