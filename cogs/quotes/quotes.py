@@ -313,7 +313,7 @@ class Quotes(commands.Cog):
             await view.start(interaction)
         except Exception as e:
             logger.exception(e)
-            await interaction.response.send_message(f"**Erreur dans l'initialisation du menu** · {e}", ephemeral=True)
+            await interaction.followup.send(f"**Erreur dans l'initialisation du menu** · {e}", ephemeral=True)
         
 
 async def setup(bot):
