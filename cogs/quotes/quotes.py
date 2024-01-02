@@ -19,6 +19,7 @@ from common.utils import pretty
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 QUOTE_EXPIRATION = 60 * 60 * 24 * 30 # 30 jours
+DEFAULT_QUOTE_IMAGE_SIZE = (650, 650)
 
 class QuotifyMessageSelect(discord.ui.Select):
     """Menu déroulant pour sélectionner les messages à citer"""
@@ -125,31 +126,53 @@ class Quotes(commands.Cog):
             extras={'description': "Génère une image de citation avec le contenu du message sélectionné."})
         self.bot.tree.add_command(self.generate_quote)
         
-        self.__assets = self.__load_assets()
+        self.__assets = {}
+        self.__fonts = {}
         
     def cog_unload(self):
         self.data.close_all()
         
-    def __load_assets(self) -> dict:
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.__load_assets()
+        self.__load_common_fonts()
+        
+    def __load_assets(self) -> dict: # Préchargement des assets ----------------
         assets = {}
         assets_path = self.data.get_folder('assets')
         assets['quotemark_white'] = Image.open(str(assets_path / 'quotemark_white.png')).convert('RGBA')
         assets['quotemark_black'] = Image.open(str(assets_path / 'quotemark_black.png')).convert('RGBA')
-        return assets
+        self.__assets = assets
+    
+    def __load_common_fonts(self): # Préchargement des polices selon DEFAULT_QUOTE_IMAGE_SIZE
+        assets_path = self.data.get_folder('assets')
+        font_path = str(assets_path / "NotoBebasNeue.ttf")
+        self.__get_font(font_path, int(DEFAULT_QUOTE_IMAGE_SIZE[1] * 0.08)) # Texte principal
+        self.__get_font(font_path, int(DEFAULT_QUOTE_IMAGE_SIZE[1] * 0.060)) # Auteur
+        self.__get_font(font_path, int(DEFAULT_QUOTE_IMAGE_SIZE[1] * 0.040)) # Date
+    
+    def __get_font(self, font_path: str, size: int) -> ImageFont.FreeTypeFont:
+        """Récupère une police depuis le cache ou charge une nouvelle police"""
+        key = (font_path, size)
+        if key not in self.__fonts:
+            self.__fonts[key] = ImageFont.truetype(font_path, size, encoding='unic')
+        return self.__fonts[key]
         
     # Génération de citations -------------------------------------------------
     
-    def _add_gradient(self, image: Image.Image, gradient_magnitude=1.0, color: Tuple[int, int, int]=(0, 0, 0)):
-        im = image
-        if im.mode != 'RGBA':
-            im = im.convert('RGBA')
-        width, height = im.size
-        y, _ = np.indices((height, width))
-        alpha = (gradient_magnitude * y / height * 255).astype(np.uint8)
-        alpha = np.minimum(alpha, 255)
-        black_im = Image.new('RGBA', (width, height), color=color)
-        black_im.putalpha(Image.fromarray(alpha))
-        gradient_im = Image.alpha_composite(im, black_im)
+    def _add_gradientv2(self, image: Image.Image, gradient_magnitude=1.0, color: Tuple[int, int, int]=(0, 0, 0)):
+        width, height = image.size
+
+        gradient = Image.new('RGBA', (width, height), color)
+        draw = ImageDraw.Draw(gradient)
+
+        end_alpha = int(gradient_magnitude * 255)
+
+        for y in range(height):
+            alpha = int((y / height) * end_alpha)
+            draw.line([(0, y), (width, y)], fill=(color[0], color[1], color[2], alpha))
+
+        gradient_im = Image.alpha_composite(image.convert('RGBA'), gradient)
         return gradient_im
     
     def create_quote_image(self, avatar: str | BytesIO, text: str, author_name: str, date: str, *, size: tuple[int, int] = (512, 512)):
@@ -158,46 +181,47 @@ class Quotes(commands.Cog):
 
         w, h = size
         box_w, _ = int(w * 0.92), int(h * 0.72)
-        image = Image.open(avatar).convert("RGBA").resize(size)
-
         assets_path = self.data.get_folder('assets')
         font_path = str(assets_path / "NotoBebasNeue.ttf")
-        bg_color = colorgram.extract(image.resize((50, 50)), 1)[0].rgb 
-        grad_magnitude = 0.85 + 0.05 * (len(text) // 100)
-        image = self._add_gradient(image, grad_magnitude, bg_color)
-        luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
+        
+        with Image.open(avatar).resize(size) as image:
+            
+            bg_color = colorgram.extract(image.resize((50, 50)), 1)[0].rgb 
+            grad_magnitude = 0.85 + 0.03 * (len(text) // 100)
+            image = self._add_gradientv2(image, grad_magnitude, bg_color)
+            luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
 
-        text_size = int(h * 0.08)
-        text_font = ImageFont.truetype(font_path, text_size, encoding='unic')
-        draw = ImageDraw.Draw(image)
-        text_color = (255, 255, 255) if luminosity < 0.5 else (0, 0, 0)
+            text_size = int(h * 0.08)
+            text_font = self.__get_font(font_path, text_size)
+            draw = ImageDraw.Draw(image)
+            text_color = (255, 255, 255) if luminosity < 0.5 else (0, 0, 0)
 
-        # Texte principal --------
-        max_lines = len(text) // 60 + 2 if len(text) > 200 else 4
-        wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
-        lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
-        while lines[-1] == "§":
-            text_size -= 2
-            text_font = ImageFont.truetype(font_path, text_size, encoding='unic')
+            # Texte principal --------
+            max_lines = len(text) // 60 + 2 if len(text) > 200 else 4
             wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
             lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
-        draw.multiline_text((w / 2, h * 0.835), lines, font=text_font, spacing=0.25, align='center', fill=text_color, anchor='md')
+            while lines[-1] == "§":
+                text_size -= 2
+                text_font = self.__get_font(font_path, text_size)
+                wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
+                lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
+            draw.multiline_text((w / 2, h * 0.835), lines, font=text_font, spacing=0.25, align='center', fill=text_color, anchor='md')
 
-        # Icone et lignes ---------
-        icon = self.__assets['quotemark_white'] if luminosity < 0.5 else self.__assets['quotemark_black']
-        icon_image = icon.resize((int(w * 0.06), int(w * 0.06)))
-        icon_left = w / 2 - icon_image.width / 2
-        image.paste(icon_image, (int(icon_left), int(h * 0.85 - icon_image.height / 2)), icon_image)
+            # Icone et lignes ---------
+            icon = self.__assets['quotemark_white'] if luminosity < 0.5 else self.__assets['quotemark_black']
+            icon_image = icon.resize((int(w * 0.06), int(w * 0.06)))
+            icon_left = w / 2 - icon_image.width / 2
+            image.paste(icon_image, (int(icon_left), int(h * 0.85 - icon_image.height / 2)), icon_image)
 
-        author_font = ImageFont.truetype(font_path, int(h * 0.060), encoding='unic')
-        draw.text((w / 2,  h * 0.95), author_name, font=author_font, fill=text_color, anchor='md', align='center')
+            author_font = self.__get_font(font_path, int(h * 0.060))
+            draw.text((w / 2,  h * 0.95), author_name, font=author_font, fill=text_color, anchor='md', align='center')
 
-        draw.line((icon_left - w * 0.25, h * 0.85, icon_left - w * 0.02, h * 0.85), fill=text_color, width=1) # Ligne de gauche
-        draw.line((icon_left + icon_image.width + w * 0.02, h * 0.85, icon_left + icon_image.width + w * 0.25, h * 0.85), fill=text_color, width=1) # Ligne de droite
+            draw.line((icon_left - w * 0.25, h * 0.85, icon_left - w * 0.02, h * 0.85), fill=text_color, width=1) # Ligne de gauche
+            draw.line((icon_left + icon_image.width + w * 0.02, h * 0.85, icon_left + icon_image.width + w * 0.25, h * 0.85), fill=text_color, width=1) # Ligne de droite
 
-        # Date -------------------
-        date_font = ImageFont.truetype(font_path, int(h * 0.040), encoding='unic')
-        draw.text((w / 2,  h * 0.985), date, font=date_font, fill=text_color, anchor='md', align='center')
+            # Date -------------------
+            date_font = self.__get_font(font_path, int(h * 0.040))
+            draw.text((w / 2,  h * 0.985), date, font=date_font, fill=text_color, anchor='md', align='center')
 
         return image
     
@@ -229,7 +253,7 @@ class Quotes(commands.Cog):
         full_content = ' '.join([self.normalize_text(m.content) for m in messages])
         author_name = f"@{base_message.author.name}" if not base_message.author.nick else f"{base_message.author.nick} (@{base_message.author.name})"
         try:
-            image = self.create_quote_image(avatar, full_content, author_name, message_date, size=(650, 650))
+            image = self.create_quote_image(avatar, full_content, author_name, message_date, size=DEFAULT_QUOTE_IMAGE_SIZE)
         except Exception as e:
             logger.exception(e, exc_info=True)
             raise ValueError("Impossible de générer l'image de citation.")
