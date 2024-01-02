@@ -264,7 +264,7 @@ class Quotes(commands.Cog):
             image.save(buffer, format='PNG')
             buffer.seek(0)
             alt_text = f"\"{full_content}\" - {author_name} ({message_date})"
-            return discord.File(buffer, filename='quote.png', description=alt_text)
+            return discord.File(buffer, filename='quote.png', description=pretty.shorten_text(alt_text, 1000))
     
     def normalize_text(self, text: str) -> str:
         """Effectue des remplacements de texte pour éviter les problèmes d'affichage"""
@@ -313,7 +313,7 @@ class Quotes(commands.Cog):
             await view.start(interaction)
         except Exception as e:
             logger.exception(e)
-            await interaction.followup.send(f"**Erreur dans l'initialisation du menu** · {e}", ephemeral=True)
+            await interaction.followup.send(f"**Erreur dans l'initialisation du menu** · `{e}`", ephemeral=True)
         
 
 async def setup(bot):
