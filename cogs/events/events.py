@@ -1,4 +1,3 @@
-from ast import Return
 import logging
 import re
 from datetime import datetime, tzinfo
