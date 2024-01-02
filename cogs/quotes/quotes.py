@@ -74,6 +74,8 @@ class QuotifyView(discord.ui.View):
         await interaction.response.defer()
         
         potential_msgs = await self.__cog.fetch_following_messages(self.initial_message)
+        if sum([len(m.clean_content) for m in potential_msgs]) > 1000:
+            return await interaction.followup.send("**Action impossible** · Le message est trop long", ephemeral=True)
         self.potential_messages = sorted(potential_msgs, key=lambda m: m.created_at)
         if len(self.potential_messages) > 1:
             options = [SelectOption(label=f"{pretty.shorten_text(m.clean_content, 100)}", value=str(m.id), description=m.created_at.strftime('%H:%M %d/%m/%y'), default= m == self.initial_message) for m in self.potential_messages]
