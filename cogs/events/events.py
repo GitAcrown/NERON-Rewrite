@@ -36,7 +36,7 @@ EVENTS_TYPES = {
     }
 }
 
-SHARE_COOLDOWN_DELAY = 60 # secondes
+SHARE_COOLDOWN_DELAY = 10 # secondes
 
 class SubscribeToReminderView(discord.ui.View):
     """Ajoute un bouton permettant de s'inscrire à un rappel"""
