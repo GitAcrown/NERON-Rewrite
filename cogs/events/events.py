@@ -573,6 +573,7 @@ class Events(commands.Cog):
             return await interaction.followup.send("**Aucun rappel** • Aucun rappel n'est actuellement actif sur ce serveur.", ephemeral=True)
         
         selfreminders = reminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
+        selfreminders_ids = [r['id'] for r in selfreminders]
         if not all_reminders:
             reminders = selfreminders
         if not reminders:
@@ -586,7 +587,7 @@ class Events(commands.Cog):
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
                 embeds.append(current_embed)
                 current_embed = discord.Embed(title=emtitle, color=DEFAULT_EMBED_COLOR)
-            title = f"`🔔` &R**{r['id']}**" if r['id'] in selfreminders else f"`🔕` &R**{r['id']}**"
+            title = f"`🔔` &R**{r['id']}**" if r['id'] in selfreminders_ids else f"`🔕` &R**{r['id']}**"
             nb_inscrits = len([int(u) for u in r['userlist'].split(',') if u])
             content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>\n**Inscrits** : {nb_inscrits}"
             current_embed.add_field(name=title, value=content, inline=False)
