@@ -660,8 +660,16 @@ class Events(commands.Cog):
         if interaction.user.id != reminder['author_id'] or not interaction.user.guild_permissions.manage_guild:
             return await interaction.response.send_message(f"**Permissions insuffisantes** • Vous n'êtes pas l'auteur du rappel #{reminder_id}.", ephemeral=True)
         
+        embed = self.get_reminder_embed(interaction.guild, reminder_id)
+        if not embed:
+            return await interaction.response.send_message(f"**Rappel introuvable** • Ce rappel n'existe pas.", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        if not await interface.ask_confirm(interaction, f"**Suppression** • Êtes-vous sûr de vouloir supprimer ce rappel ?", embeds=[embed]):
+            return await interaction.followup.send(f"**Suppression annulée** • Le rappel `#{reminder_id}` n'a pas été supprimé.", ephemeral=True)
+        
         self.remove_reminder(interaction.guild, reminder_id)
-        await interaction.response.send_message(f"**Rappel supprimé** • Le rappel `#{reminder_id}` a été supprimé.", ephemeral=True)
+        await interaction.followup.send(f"**Rappel supprimé** • Le rappel `#{reminder_id}` a été supprimé.", ephemeral=True)
     
     @reminders_group.command(name='subscribe')
     @app_commands.rename(reminder_id='rappel')
