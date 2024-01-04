@@ -364,6 +364,10 @@ class Events(commands.Cog):
         author = guild.get_member(reminder['author_id'])
         if not author:
             author = self.bot.user
+        image_url = re.search(r'(https?://[^\s]+)', reminder['content'])
+        if image_url:
+            if image_url.group(1).endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                em.set_image(url=image_url.group(1))
         return em
     
     def small_reminder_embed(self, guild: discord.Guild, reminder_id: int) -> discord.Embed | None:
@@ -378,6 +382,10 @@ class Events(commands.Cog):
             author = self.bot.user
         if author:
             em.set_footer(text=f"Rappel de {author.name}", icon_url=author.display_avatar.url)
+        image_url = re.search(r'(https?://[^\s]+)', reminder['content'])
+        if image_url:
+            if image_url.group(1).endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                em.set_image(url=image_url.group(1))
         return em
     
     async def handle_reminder(self, guild: discord.Guild, reminder_id: int):
@@ -572,15 +580,15 @@ class Events(commands.Cog):
             if len(current_embed.fields) >= 20:
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
                 embeds.append(current_embed)
-                current_embed = discord.Embed(title=f"Rappels actifs {'(tous)' if all_reminders else ''}", color=DEFAULT_EMBED_COLOR)
-            title = f"• Rappel `{r['id']}`"
+                current_embed = discord.Embed(title=emtitle, color=DEFAULT_EMBED_COLOR)
+            title = f"• Rappel `&R{r['id']}`"
             nb_inscrits = len([int(u) for u in r['userlist'].split(',') if u])
             content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>\n**Inscrits** : {nb_inscrits}"
             current_embed.add_field(name=title, value=content, inline=False)
         if embeds:
             current_embed.set_footer(text=f"Page {len(embeds)+1}")
         else:
-            current_embed.set_footer(text="Utilisez '&rX' pour partager un rappel.")
+            current_embed.set_footer(text="Utilisez '&Rx' pour partager un rappel.")
         embeds.append(current_embed)
         
         if len(embeds) == 1:
