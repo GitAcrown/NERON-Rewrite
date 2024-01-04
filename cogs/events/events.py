@@ -366,8 +366,10 @@ class Events(commands.Cog):
             author = self.bot.user
         image_url = re.search(r'(https?://[^\s]+)', reminder['content'])
         if image_url:
-            if image_url.group(1).endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                em.set_image(url=image_url.group(1))
+             # On retire les paramètres de l'url
+            image_url = image_url.group(1).split('?')[0]
+            if image_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                em.set_image(url=image_url)
         return em
     
     def small_reminder_embed(self, guild: discord.Guild, reminder_id: int) -> discord.Embed | None:
@@ -384,8 +386,10 @@ class Events(commands.Cog):
             em.set_footer(text=f"Rappel de {author.name}", icon_url=author.display_avatar.url)
         image_url = re.search(r'(https?://[^\s]+)', reminder['content'])
         if image_url:
-            if image_url.group(1).endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                em.set_image(url=image_url.group(1))
+             # On retire les paramètres de l'url
+            image_url = image_url.group(1).split('?')[0]
+            if image_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                em.set_image(url=image_url)
         return em
     
     async def handle_reminder(self, guild: discord.Guild, reminder_id: int):
@@ -568,8 +572,9 @@ class Events(commands.Cog):
         if not reminders:
             return await interaction.followup.send("**Aucun rappel** • Aucun rappel n'est actuellement actif sur ce serveur.", ephemeral=True)
         
+        selfreminders = reminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
         if not all_reminders:
-            reminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
+            reminders = selfreminders
         if not reminders:
             return await interaction.followup.send("**Aucun rappel** • Vous n'êtes inscrit à aucun rappel sur ce serveur.", ephemeral=True)
         
@@ -581,7 +586,7 @@ class Events(commands.Cog):
                 current_embed.set_footer(text=f"Page {len(embeds)+1}")
                 embeds.append(current_embed)
                 current_embed = discord.Embed(title=emtitle, color=DEFAULT_EMBED_COLOR)
-            title = f"• Rappel `&R{r['id']}`"
+            title = f"`🔔` &R**{r['id']}**" if r['id'] in selfreminders else f"`🔕` &R**{r['id']}**"
             nb_inscrits = len([int(u) for u in r['userlist'].split(',') if u])
             content = f"**Contenu** : {r['content']}\n**Date** : <t:{int(r['timestamp'])}:R>\n**Sur** : <#{r['channel_id']}>\n**Inscrits** : {nb_inscrits}"
             current_embed.add_field(name=title, value=content, inline=False)
