@@ -355,7 +355,7 @@ class Events(commands.Cog):
         if not reminder:
             return None
         timestamp = int(reminder['timestamp'])
-        em = discord.Embed(title="Rappel", description=reminder['content'], color=DEFAULT_EMBED_COLOR)
+        em = discord.Embed(title=f"Rappel &R{reminder_id}", description=reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
         em.add_field(name="Notifié sur", value=f"<#{reminder['channel_id']}>")
         sharing = self.data.get_keyvalue_table_value(guild, 'settings', 'EnableReminderShare', cast=bool)
@@ -742,7 +742,8 @@ class Events(commands.Cog):
         reminders = self.get_reminders(interaction.guild)
         if not reminders:
             return []
-        return [app_commands.Choice(name=f"#{r['id']} • {shorten_text(r['content'], 30)}", value=r['id']) for r in reminders][:10]
+        reminders = fuzzy.finder(current, [(r['id'], r['content']) for r in reminders])
+        return [app_commands.Choice(name=f"{r[0]} • {shorten_text(r[1], 50)}", value=r[0]) for r in reminders][:20]
     
     config_reminders_group = app_commands.Group(name='config-remindme', description="Configuration du système de rappels", guild_only=True, default_permissions=discord.Permissions(manage_messages=True))
     
