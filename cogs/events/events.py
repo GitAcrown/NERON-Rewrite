@@ -572,7 +572,7 @@ class Events(commands.Cog):
         if not reminders:
             return await interaction.followup.send("**Aucun rappel** • Aucun rappel n'est actuellement actif sur ce serveur.", ephemeral=True)
         
-        selfreminders = reminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
+        selfreminders = [r for r in reminders if interaction.user.id in [int(u) for u in r['userlist'].split(',') if u]]
         selfreminders_ids = [r['id'] for r in selfreminders]
         if not all_reminders:
             reminders = selfreminders
