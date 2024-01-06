@@ -375,7 +375,7 @@ class Colors(commands.Cog):
         if not re.match(COLOR_ROLE_NAME_PATTERN, color):
             return await interaction.response.send_message("**Erreur** • La couleur donnée n'est pas au format hexadécimal (ex. #ff0123).", ephemeral=True)
         
-        color = color.lstrip('#')
+        color = color.strip('#')
         if color == INVALID_NAME:
             return await interaction.response.send_message("**Impossible** • Cette couleur est utilisée par Discord pour les rôles sans couleur, utilisez plutôt #000001 pour du noir.", ephemeral=True)
         
