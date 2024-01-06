@@ -223,7 +223,7 @@ class Quotes(commands.Cog):
 
             # Date -------------------
             date_font = self.__get_font(font_path, int(h * 0.040))
-            date_text = f"#{channel_name} · {date}"
+            date_text = f"#{channel_name} • {date}"
             draw.text((w / 2, h * 0.9875), date_text, font=date_font, fill=text_color, anchor='md', align='center')
         return image
     
@@ -267,8 +267,9 @@ class Quotes(commands.Cog):
         with BytesIO() as buffer:
             image.save(buffer, format='PNG')
             buffer.seek(0)
-            alt_text = f"\"{full_content}\" - {author_name} ({message_date})"
-            return discord.File(buffer, filename='quote.png', description=pretty.shorten_text(alt_text, 1000))
+            alt_text = pretty.shorten_text(full_content, 950)
+            alt_text = f"\"{alt_text}\" - {author_name} [#{message_channel_name} • {message_date}]"
+            return discord.File(buffer, filename='quote.png', description=alt_text)
     
     def normalize_text(self, text: str) -> str:
         """Effectue des remplacements de texte pour éviter les problèmes d'affichage"""
