@@ -223,10 +223,8 @@ class Quotes(commands.Cog):
 
             # Date -------------------
             date_font = self.__get_font(font_path, int(h * 0.040))
-            separator = '•'
-            draw.text((w / 2,  h * 0.985), separator, font=date_font, fill=text_color, anchor='md', align='center')
-            draw.text((w / 2 + date_font.getlength(separator) / 2 + w * 0.01,  h * 0.985), date, font=date_font, fill=text_color, anchor='ld', align='left')
-            draw.text((w / 2 - date_font.getlength(separator) / 2 - w * 0.01,  h * 0.985), '#' + channel_name, font=date_font, fill=text_color, anchor='rd', align='right')
+            date_text = f"#{channel_name} · {date}"
+            draw.text((w / 2, h * 0.9875), date_text, font=date_font, fill=text_color, anchor='md', align='center')
         return image
     
     async def fetch_following_messages(self, starting_message: discord.Message, messages_limit: int = 5, lenght_limit: int = 1000) -> list[discord.Message]:
