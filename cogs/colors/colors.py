@@ -18,6 +18,7 @@ from common.utils import pretty
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
 INVALID_COLOR = 0x000000 # Utilisé par Discord pour les rôles sans couleur
+INVALID_NAME = '#000000' # Utilisé par Discord pour les rôles sans couleur
 COLOR_ROLE_NAME_PATTERN = r'^#?([0-9a-fA-F]{6})$' # ex. #ff0000
 CLEANUP_COUNTDOWN = 10 # Nombre de changements de rôle avant de faire du ménage
 
@@ -128,7 +129,7 @@ class Colors(commands.Cog):
     
     def get_color_roles(self, guild: discord.Guild) -> list[discord.Role]:
         """Renvoie la liste des rôles de couleur du serveur."""
-        return [r for r in guild.roles if r.name.startswith('#') and r.name[1:].isalnum() and f'#{r.name[1:].lower()}' != INVALID_COLOR]
+        return [r for r in guild.roles if r.name.startswith('#') and r.name[1:].isalnum() and f'#{r.name[1:].lower()}' != INVALID_NAME]
     
     def get_color_role(self, guild: discord.Guild, hex_color: str) -> discord.Role | None:
         """Renvoie le rôle de couleur correspondant à la couleur donnée."""
@@ -273,7 +274,7 @@ class Colors(commands.Cog):
         avatar = avatar.resize((46, 46), Image.LANCZOS)
         
         versions = []
-        for name_color in [c for c in colors if f'#{c.rgb.r:02x}{c.rgb.g:02x}{c.rgb.b:02x}' != INVALID_COLOR]:
+        for name_color in [c for c in colors if f'#{c.rgb.r:02x}{c.rgb.g:02x}{c.rgb.b:02x}' != INVALID_NAME]:
             images = []
             name_font = ImageFont.truetype(f'{assets_path}/gg_sans.ttf', 18)
             content_font = ImageFont.truetype(f'{assets_path}/gg_sans_light.ttf', 18)
@@ -375,7 +376,7 @@ class Colors(commands.Cog):
             return await interaction.response.send_message("**Erreur** • La couleur donnée n'est pas au format hexadécimal (ex. #ff0123).", ephemeral=True)
         
         color = color.lstrip('#')
-        if color == INVALID_COLOR:
+        if color == INVALID_NAME:
             return await interaction.response.send_message("**Impossible** • Cette couleur est utilisée par Discord pour les rôles sans couleur, utilisez plutôt #000001 pour du noir.", ephemeral=True)
         
         old_role = self.get_member_color_role(interaction.user)
