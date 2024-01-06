@@ -177,7 +177,7 @@ class Quotes(commands.Cog):
         gradient_im = Image.alpha_composite(image.convert('RGBA'), gradient)
         return gradient_im
     
-    def create_quote_image(self, avatar: str | BytesIO, text: str, author_name: str, date: str, *, size: tuple[int, int] = (512, 512)):
+    def create_quote_image(self, avatar: str | BytesIO, text: str, author_name: str, channel_name: str, date: str, *, size: tuple[int, int] = (512, 512)):
         """Crée une image de citation avec un avatar, un texte, un nom d'auteur et une date."""
         text = text.upper()
 
@@ -223,8 +223,10 @@ class Quotes(commands.Cog):
 
             # Date -------------------
             date_font = self.__get_font(font_path, int(h * 0.040))
-            draw.text((w / 2,  h * 0.985), date, font=date_font, fill=text_color, anchor='md', align='center')
-
+            separator = '•'
+            draw.text((w / 2,  h * 0.985), separator, font=date_font, fill=text_color, anchor='md', align='center')
+            draw.text((w / 2 + date_font.getlength(separator) / 2 + w * 0.01,  h * 0.985), date, font=date_font, fill=text_color, anchor='ld', align='left')
+            draw.text((w / 2 - date_font.getlength(separator) / 2 - w * 0.01,  h * 0.985), '#' + channel_name, font=date_font, fill=text_color, anchor='rd', align='right')
         return image
     
     async def fetch_following_messages(self, starting_message: discord.Message, messages_limit: int = 5, lenght_limit: int = 1000) -> list[discord.Message]:
@@ -252,10 +254,14 @@ class Quotes(commands.Cog):
         
         avatar = BytesIO(await messages[0].author.display_avatar.read())
         message_date = messages[0].created_at.strftime("%d.%m.%Y")
+        if isinstance(messages[0].channel, (discord.DMChannel, discord.PartialMessageable)):
+            message_channel_name = 'MP'
+        else:
+            message_channel_name = messages[0].channel.name if messages[0].channel.name else 'Inconnu'
         full_content = ' '.join([self.normalize_text(m.content) for m in messages])
         author_name = f"@{base_message.author.name}" if not base_message.author.nick else f"{base_message.author.nick} (@{base_message.author.name})"
         try:
-            image = self.create_quote_image(avatar, full_content, author_name, message_date, size=DEFAULT_QUOTE_IMAGE_SIZE)
+            image = self.create_quote_image(avatar, full_content, author_name, message_channel_name, message_date, size=DEFAULT_QUOTE_IMAGE_SIZE)
         except Exception as e:
             logger.exception(e, exc_info=True)
             raise ValueError("Impossible de générer l'image de citation.")
