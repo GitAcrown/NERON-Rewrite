@@ -240,7 +240,7 @@ class Colors(commands.Cog):
             image = Image.open(img).convert('RGB')
         except Exception as e:
             raise commands.CommandError("Impossible d'ouvrir l'image.")
-        colors = colorgram.extract(image.resize((32, 32)), n_colors)
+        colors = colorgram.extract(image.resize((100, 100)), n_colors)
 
         image = ImageOps.contain(image, (500, 500), method=Image.LANCZOS)
         iw, ih = image.size
