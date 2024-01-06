@@ -225,14 +225,6 @@ class Colors(commands.Cog):
                 
     # Opérations de couleurs ---------------------------------------------------
     
-    async def get_avatar_colors(self, member: discord.Member, *, limit: int = 3) -> list[str]:
-        """Renvoie les couleurs dominantes de l'avatar du membre."""
-        avatar = await member.display_avatar.read()
-        avatar = Image.open(BytesIO(avatar)).resize((32, 32))
-        colors = colorgram.extract(avatar, limit)
-        colors = [f'#{c.rgb.r:02x}{c.rgb.g:02x}{c.rgb.b:02x}' for c in colors]
-        return [c for c in colors if c != INVALID_COLOR]
-    
     def draw_image_palette(self, img: str | BytesIO, n_colors: int = 5) -> Image.Image:
         """Dessine une palette de couleurs à partir d'une image."""
         assets_path = str(self.data.get_folder('assets'))
@@ -272,7 +264,7 @@ class Colors(commands.Cog):
         assets_path = str(self.data.get_folder('assets'))
         avatar = await member.display_avatar.with_size(128).read()
         avatar = Image.open(BytesIO(avatar)).convert('RGBA')
-        colors = colorgram.extract(avatar.resize((32, 32)), limit)
+        colors = colorgram.extract(avatar.resize((75, 75)), limit)
 
         mask = Image.new('L', avatar.size, 0)
         draw = ImageDraw.Draw(mask)
