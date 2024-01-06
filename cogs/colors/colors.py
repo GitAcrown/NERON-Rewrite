@@ -380,6 +380,8 @@ class Colors(commands.Cog):
             return await interaction.response.send_message("**Impossible** • Cette couleur est utilisée par Discord pour les rôles sans couleur, utilisez plutôt #000001 pour du noir.", ephemeral=True)
         
         old_role = self.get_member_color_role(interaction.user)
+        if old_role and old_role.name[1:].lower() == color.lower():
+            return await interaction.response.send_message("**Impossible** • Vous avez déjà ce rôle de couleur.", ephemeral=True)
         
         new_role = await self.fetch_color_role(interaction.guild, color, interaction.user)
         if not new_role:
