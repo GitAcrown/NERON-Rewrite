@@ -228,7 +228,7 @@ class Colors(commands.Cog):
     async def get_avatar_colors(self, member: discord.Member, *, limit: int = 3) -> list[str]:
         """Renvoie les couleurs dominantes de l'avatar du membre."""
         avatar = await member.display_avatar.read()
-        avatar = Image.open(BytesIO(avatar)).resize((50, 50))
+        avatar = Image.open(BytesIO(avatar)).resize((32, 32))
         colors = colorgram.extract(avatar, limit)
         colors = [f'#{c.rgb.r:02x}{c.rgb.g:02x}{c.rgb.b:02x}' for c in colors]
         return [c for c in colors if c != INVALID_COLOR]
@@ -240,7 +240,7 @@ class Colors(commands.Cog):
             image = Image.open(img).convert('RGB')
         except Exception as e:
             raise commands.CommandError("Impossible d'ouvrir l'image.")
-        colors = colorgram.extract(image.resize((50, 50)), n_colors)
+        colors = colorgram.extract(image.resize((32, 32)), n_colors)
 
         image = ImageOps.contain(image, (500, 500), method=Image.LANCZOS)
         iw, ih = image.size
@@ -272,7 +272,7 @@ class Colors(commands.Cog):
         assets_path = str(self.data.get_folder('assets'))
         avatar = await member.display_avatar.with_size(128).read()
         avatar = Image.open(BytesIO(avatar)).convert('RGBA')
-        colors = colorgram.extract(avatar.resize((50, 50)), limit)
+        colors = colorgram.extract(avatar.resize((32, 32)), limit)
 
         mask = Image.new('L', avatar.size, 0)
         draw = ImageDraw.Draw(mask)
