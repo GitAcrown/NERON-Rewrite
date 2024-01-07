@@ -72,9 +72,10 @@ class Birthdays(commands.Cog):
                     await channel.send(txt, silent=True)
                     
                 if self.is_role_attribution_hour(guild) or self.override_conditions.get(guild.id, False):
+                    logger.info(f"1 Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
                     role = self.get_birthday_role(guild)
                     if role:
-                        logger.info(f"Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
+                        logger.info(f"2 Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
                         for m in guild.members:
                             if m in birthdays:
                                 continue
@@ -161,6 +162,7 @@ class Birthdays(commands.Cog):
         """Vérifie si c'est l'heure d'attribuer le rôle d'anniversaire (minuit chaque jour selon le fuseau horaire du serveur)"""
         tz = self.get_timezone(guild)
         now = datetime.now(tz)
+        print(now.hour)
         return now.hour == 0
     
     def set_notification_hour(self, guild: discord.Guild, hour: int):
