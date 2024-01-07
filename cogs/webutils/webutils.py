@@ -58,7 +58,7 @@ class WebUtils(commands.Cog):
             'EnableFixLinks': 1,
             'CancelFixButton': 1
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
         
         # Correcteurs de liens
         link_fixes = dataio.TableInitializer(
@@ -71,7 +71,7 @@ class WebUtils(commands.Cog):
             default_values=DEFAULT_TRIGGERS,
             fill_if_missing=False
         )
-        self.data.register_tables_for(discord.Guild, [link_fixes])
+        self.data.append_initializers_for(discord.Guild, [link_fixes])
         
         # TODO: Historique des liens postés
         
@@ -135,7 +135,7 @@ class WebUtils(commands.Cog):
         if not message.guild:
             return
         
-        if not self.data.get_keyvalue_table_value(message.guild, 'settings', 'EnableFixLinks', cast=bool):
+        if not self.data.get_collection_value(message.guild, 'settings', 'EnableFixLinks', cast=bool):
             return
         
         triggers = self.get_triggers_cache(message.guild)
@@ -159,7 +159,7 @@ class WebUtils(commands.Cog):
                 pass
             except discord.Forbidden:
                 pass
-            if self.data.get_keyvalue_table_value(message.guild, 'settings', 'CancelFixButton', cast=bool):
+            if self.data.get_collection_value(message.guild, 'settings', 'CancelFixButton', cast=bool):
                 view = CancelButtonView(message, replace_msg)
                 await replace_msg.edit(view=view)
         

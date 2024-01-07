@@ -29,7 +29,7 @@ class MsgBoard(commands.Cog):
             'Webhook_URL': '',
             'MaxMessageAge': 60 * 60 * 24 # 24 heures par défaut
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
         
         # Historique des messages repostés
         board_history = dataio.TableInitializer(
@@ -41,7 +41,7 @@ class MsgBoard(commands.Cog):
                 timestamp INTEGER
                 )"""
         )
-        self.data.register_tables_for(discord.Guild, [board_history])
+        self.data.append_initializers_for(discord.Guild, [board_history])
         
         self.clean_history.start()
         
@@ -67,7 +67,7 @@ class MsgBoard(commands.Cog):
         if not isinstance(message.guild, discord.Guild) or not isinstance(message.author, discord.Member):
             raise TypeError("Le message doit provenir d'un membre d'un serveur.")
         
-        webhook_url = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Webhook_URL')
+        webhook_url = self.data.get_collection_value(message.guild, 'settings', 'Webhook_URL')
         if not webhook_url:
             return
         
@@ -140,8 +140,8 @@ class MsgBoard(commands.Cog):
         if not channel.permissions_for(message.guild.me).manage_messages:
             return
         
-        threshold = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Threshold')
-        emoji = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Emoji')
+        threshold = self.data.get_collection_value(message.guild, 'settings', 'Threshold')
+        emoji = self.data.get_collection_value(message.guild, 'settings', 'Emoji')
         
         text = f"`{emoji}` **Popularité montante** • Ce message possède {current_votes} votes et sera reposté s'il atteint {threshold}{emoji} !"
         notif_msg = await message.reply(text, mention_author=False)
@@ -162,7 +162,7 @@ class MsgBoard(commands.Cog):
         if not channel.permissions_for(message.guild.me).manage_messages:
             return
         
-        emoji = self.data.get_keyvalue_table_value(message.guild, 'settings', 'Emoji')
+        emoji = self.data.get_collection_value(message.guild, 'settings', 'Emoji')
         
         text = f"## `{emoji}` **Message populaire** • Ce message a été reposté sur le salon de compilation !"
         await message.reply(text, delete_after=60, mention_author=False)
@@ -180,18 +180,18 @@ class MsgBoard(commands.Cog):
         if not channel.permissions_for(channel.guild.me).read_message_history:
             return
         guild = channel.guild
-        if not self.data.get_keyvalue_table_value(guild, 'settings', 'Webhook_URL'):
+        if not self.data.get_collection_value(guild, 'settings', 'Webhook_URL'):
             return
         
         
         reaction_emoji = payload.emoji.name
-        if reaction_emoji != self.data.get_keyvalue_table_value(guild, 'settings', 'Emoji'):
+        if reaction_emoji != self.data.get_collection_value(guild, 'settings', 'Emoji'):
             return
         message = await channel.fetch_message(payload.message_id)
         if not message:
             return  
         
-        maxage = self.data.get_keyvalue_table_value(guild, 'settings', 'MaxMessageAge', cast=int)
+        maxage = self.data.get_collection_value(guild, 'settings', 'MaxMessageAge', cast=int)
         if message.created_at.timestamp() < (datetime.utcnow().timestamp() - maxage):
             return
         
@@ -200,9 +200,9 @@ class MsgBoard(commands.Cog):
             return
         votes_count = votes_count[0]
         
-        threshold = self.data.get_keyvalue_table_value(guild, 'settings', 'Threshold', cast=int)
+        threshold = self.data.get_collection_value(guild, 'settings', 'Threshold', cast=int)
         
-        notif = self.data.get_keyvalue_table_value(guild, 'settings', 'NotifyHalfThreshold', cast=bool)
+        notif = self.data.get_collection_value(guild, 'settings', 'NotifyHalfThreshold', cast=bool)
         if notif:
             notif_threshold = threshold // 2 + 1
             if votes_count == notif_threshold and not self.get_message_history(message).get('notification_id'):
@@ -249,13 +249,13 @@ class MsgBoard(commands.Cog):
             raise ValueError("L'interaction doit être sur un serveur.")
         
         if not channel:
-            return await interaction.response.send_message(f"**Salon du message board** • Le salon actuel du message board est <#{self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Channel')}>.", ephemeral=True)
+            return await interaction.response.send_message(f"**Salon du message board** • Le salon actuel du message board est <#{self.data.get_collection_value(interaction.guild, 'settings', 'Channel')}>.", ephemeral=True)
         
-        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+        if not self.data.get_collection_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         await interaction.response.defer(ephemeral=True)
-        current_webhook_url = self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Webhook_URL')
+        current_webhook_url = self.data.get_collection_value(interaction.guild, 'settings', 'Webhook_URL')
         if not channel:
             if not current_webhook_url:
                 await interaction.followup.send("**Salon du message board** • Aucun salon n'est défini pour le message board.", ephemeral=True)
@@ -307,9 +307,9 @@ class MsgBoard(commands.Cog):
             raise TypeError("La commande doit être utilisée sur un serveur.")
         
         if threshold is None:
-            return await interaction.response.send_message(f"**Seuil** • Le seuil actuel pour reposter est {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Threshold')}{' et la notification à la moitié du seuil est activée' if self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'NotifyHalfThreshold', cast=bool) else ''}.", ephemeral=True)
+            return await interaction.response.send_message(f"**Seuil** • Le seuil actuel pour reposter est {self.data.get_collection_value(interaction.guild, 'settings', 'Threshold')}{' et la notification à la moitié du seuil est activée' if self.data.get_collection_value(interaction.guild, 'settings', 'NotifyHalfThreshold', cast=bool) else ''}.", ephemeral=True)
         
-        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+        if not self.data.get_collection_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         if half_notification and threshold < 3:
@@ -329,9 +329,9 @@ class MsgBoard(commands.Cog):
             raise ValueError("L'interaction doit être sur un serveur.")
         
         if emoji is None:
-            return await interaction.response.send_message(f"**Emoji de vote** • L'emoji de vote actuel est {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Emoji')}.", ephemeral=True)
+            return await interaction.response.send_message(f"**Emoji de vote** • L'emoji de vote actuel est {self.data.get_collection_value(interaction.guild, 'settings', 'Emoji')}.", ephemeral=True)
         
-        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+        if not self.data.get_collection_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         if type(emoji) is not str or len(emoji) > 1:
@@ -351,9 +351,9 @@ class MsgBoard(commands.Cog):
             raise ValueError("L'interaction doit être sur un serveur.")
         
         if maxage is None:
-            return await interaction.response.send_message(f"**Âge maximal** • L'âge maximal des messages est actuellement de {self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'MaxMessageAge') / 60 / 60} heures.", ephemeral=True)
+            return await interaction.response.send_message(f"**Âge maximal** • L'âge maximal des messages est actuellement de {self.data.get_collection_value(interaction.guild, 'settings', 'MaxMessageAge') / 60 / 60} heures.", ephemeral=True)
         
-        if not self.data.get_keyvalue_table_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+        if not self.data.get_collection_value(interaction.guild, 'settings', 'Enabled', cast=bool):
             return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
         
         self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'MaxMessageAge', maxage * 60 * 60)

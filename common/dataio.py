@@ -131,7 +131,7 @@ class CogData:
             
     # ---- Initialisation des tables ----
     
-    def register_tables_for(self, obj_type: Type[discord.abc.Snowflake] | str, initializers: Iterable['TableInitializer']) -> None:
+    def append_initializers_for(self, obj_type: Type[discord.abc.Snowflake] | str, initializers: Iterable['TableInitializer']) -> None:
         """Enregistre des initialisateurs de tables de données pour un type d'objet
 
         :param obj_type: Type d'objet concerné par les initialisateurs
@@ -159,7 +159,7 @@ class CogData:
     
     # ---- Tables de type clé-valeur ----
     
-    def register_keyvalue_table_for(self, obj_type: Type[discord.abc.Snowflake] | str, table_name: str, *, default_values: dict[str, Any] = {}) -> None:
+    def append_collection_initializer_for(self, obj_type: Type[discord.abc.Snowflake] | str, table_name: str, *, default_values: dict[str, Any] = {}) -> None:
         """Enregistre un initialisateur pour une table clé-valeur simple
 
         :param obj_type: Type d'objet concerné par l'initialisateur
@@ -169,9 +169,9 @@ class CogData:
         table_name = re.sub(r'[^a-z0-9_]', '_', table_name.lower())
         create_query = f'CREATE TABLE IF NOT EXISTS {table_name} (key TEXT PRIMARY KEY, value TEXT)'
         insert_values = [{'key': str(k), 'value': str(v)} for k, v in default_values.items()]
-        self.register_tables_for(obj_type, [TableInitializer(table_name, create_query, default_values=insert_values)])
+        self.append_initializers_for(obj_type, [TableInitializer(table_name, create_query, default_values=insert_values)])
         
-    def get_keyvalue_table_values(self, obj: discord.abc.Snowflake | str, table_name: str) -> dict[str, str]:
+    def get_collection_values(self, obj: discord.abc.Snowflake | str, table_name: str) -> dict[str, str]:
         """Récupère l'intégralité des valeurs d'une table clé-valeur
         
         :param obj: L'objet dont on veut récupérer les données
@@ -188,7 +188,7 @@ class CogData:
         r = data.fetchall(f'SELECT * FROM {table_name}')
         return {row['key']: row['value'] for row in r}
     
-    def get_keyvalue_table_value(self, obj: discord.abc.Snowflake | str, table_name: str, key: str, *, cast: Type[Any] = str) -> Any:
+    def get_collection_value(self, obj: discord.abc.Snowflake | str, table_name: str, key: str, *, cast: Type[Any] = str) -> Any:
         """Récupère une valeur d'une table clé-valeur
         
         :param obj: L'objet dont on veut récupérer les données

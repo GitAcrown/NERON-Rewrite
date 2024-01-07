@@ -22,7 +22,7 @@ class Birthdays(commands.Cog):
             'NotificationHour': '12',
             'BirthdayRoleID': 0,
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
         
         # Anniversaires
         birthdays = dataio.TableInitializer(
@@ -33,9 +33,10 @@ class Birthdays(commands.Cog):
                 guilds_hidden TEXT DEFAULT ''
                 )"""
         )
-        self.data.register_tables_for('global', [birthdays])
+        self.data.append_initializers_for('global', [birthdays])
         
         self.last_check : str = ''
+        self.override_conditions : dict[int, bool] = {}
     
         
     @commands.Cog.listener()
@@ -56,7 +57,7 @@ class Birthdays(commands.Cog):
             for guild in self.bot.guilds:
                 birthdays = self.get_birthdays_today(guild)
                 if not birthdays:
-                        continue
+                    continue
                 
                 channel = self.get_birthday_channel(guild)
                 if channel and isinstance(channel, (discord.TextChannel)):
@@ -70,20 +71,21 @@ class Birthdays(commands.Cog):
                         txt += f"> {m.mention}\n"
                     await channel.send(txt, silent=True)
                     
-                if not self.is_role_attribution_hour(guild):
-                    continue
+                if self.is_role_attribution_hour(guild) or self.override_conditions.get(guild.id, False):
+                    role = self.get_birthday_role(guild)
+                    if role:
+                        logger.info(f"Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
+                        for m in guild.members:
+                            if m in birthdays:
+                                continue
+                            if role in m.roles:
+                                await m.remove_roles(role, reason="Anniversaire terminé")
+                                
+                        for m in birthdays:
+                            if role not in m.roles:
+                                await m.add_roles(role, reason="Anniversaire")
                 
-                role = self.get_birthday_role(guild)
-                if role:
-                    for m in guild.members:
-                        if m in birthdays:
-                            continue
-                        if role in m.roles:
-                            await m.remove_roles(role, reason="Anniversaire terminé")
-                            
-                    for m in birthdays:
-                        if role not in m.roles:
-                            await m.add_roles(role, reason="Anniversaire")
+                self.override_conditions[guild.id] = False
         
     # Anniversaires ------------------------------------------------------------
     
@@ -136,7 +138,7 @@ class Birthdays(commands.Cog):
     # Serveur -----------------------------------------------------------------
     
     def get_birthday_channel(self, guild: discord.Guild) -> discord.abc.GuildChannel | None:
-        channel_id = self.data.get_keyvalue_table_value(guild, 'settings', 'NotificationChannelID', cast=int)
+        channel_id = self.data.get_collection_value(guild, 'settings', 'NotificationChannelID', cast=int)
         return guild.get_channel(channel_id) if channel_id else None
     
     def get_timezone(self, guild: discord.Guild | None = None) -> tzinfo:
@@ -150,7 +152,7 @@ class Birthdays(commands.Cog):
     
     def is_notification_hour(self, guild: discord.Guild) -> bool:
         """Vérifie si c'est l'heure d'envoyer les notifications d'anniversaire (heure définie dans les paramètres du serveur)"""
-        hour = self.data.get_keyvalue_table_value(guild, 'settings', 'NotificationHour', cast=int)
+        hour = self.data.get_collection_value(guild, 'settings', 'NotificationHour', cast=int)
         tz = self.get_timezone(guild)
         now = datetime.now(tz)
         return now.hour == int(hour)
@@ -165,7 +167,7 @@ class Birthdays(commands.Cog):
         self.data.set_keyvalue_table_value(guild, 'settings', 'NotificationHour', hour)
     
     def get_birthday_role(self, guild: discord.Guild) -> discord.Role | None:
-        role_id = self.data.get_keyvalue_table_value(guild, 'settings', 'BirthdayRoleID', cast=int)
+        role_id = self.data.get_collection_value(guild, 'settings', 'BirthdayRoleID', cast=int)
         return guild.get_role(role_id) if role_id else None
     
     def get_birthdays(self, guild: discord.Guild) -> dict[discord.Member, datetime]:
@@ -370,6 +372,17 @@ class Birthdays(commands.Cog):
         else:
             self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'BirthdayRoleID', 0)
             await interaction.response.send_message("**Rôle supprimé** • Aucun rôle ne sera attribué aux membres le jour de leur anniversaire", ephemeral=True)
+
+    @settings_group.command(name='manualcheck')
+    async def manual_check_command(self, interaction: Interaction):
+        """Vérifier manuellement les anniversaires"""
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message("**Commande non disponible** • Cette commande n'est disponible que sur un serveur", ephemeral=True)
+        
+        self.last_check = ''
+        self.override_conditions[interaction.guild.id] = True
+        await interaction.response.send_message("**Vérification manuelle** • La vérification des anniversaires va être effectuée dans les prochaines minutes", ephemeral=True)
+    
 
     # OWNER ONLY ===============================================================
     

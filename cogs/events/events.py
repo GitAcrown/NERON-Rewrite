@@ -74,7 +74,7 @@ class Events(commands.Cog):
             'EnableReminderShare': 1,
             'SilentEventMentions': 0
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
 
         # Trackers actifs
         trackers = dataio.TableInitializer(
@@ -97,7 +97,7 @@ class Events(commands.Cog):
                 userlist TEXT DEFAULT NULL
                 )"""
         )
-        self.data.register_tables_for(discord.Guild, [trackers, reminders])
+        self.data.append_initializers_for(discord.Guild, [trackers, reminders])
         
         self.__reminders_cache : dict[int, list[dict]] = {}
         self.__reminders_share_cooldown : dict[int, int] = {}
@@ -211,7 +211,7 @@ class Events(commands.Cog):
             return
         if message.author.bot:
             return
-        if not self.data.get_keyvalue_table_value(message.guild, 'settings', 'EnableReminderShare', cast=bool):
+        if not self.data.get_collection_value(message.guild, 'settings', 'EnableReminderShare', cast=bool):
             return
         if not message.channel.permissions_for(message.guild.me).send_messages:
             return
@@ -358,7 +358,7 @@ class Events(commands.Cog):
         em = discord.Embed(title=f"Rappel &R{reminder_id}", description=reminder['content'], color=DEFAULT_EMBED_COLOR)
         em.add_field(name="Date", value=f"<t:{timestamp}:R>")
         em.add_field(name="Notifié sur", value=f"<#{reminder['channel_id']}>")
-        sharing = self.data.get_keyvalue_table_value(guild, 'settings', 'EnableReminderShare', cast=bool)
+        sharing = self.data.get_collection_value(guild, 'settings', 'EnableReminderShare', cast=bool)
         if sharing and show_share:
             em.add_field(name="Partager", value=f"`&r{reminder_id}`")
         author = guild.get_member(reminder['author_id'])
@@ -404,7 +404,7 @@ class Events(commands.Cog):
         if not embed:
             return
         users = self.get_reminder_users(guild, reminder_id)
-        silent = self.data.get_keyvalue_table_value(guild, 'settings', 'SilentEventMentions', cast=bool)
+        silent = self.data.get_collection_value(guild, 'settings', 'SilentEventMentions', cast=bool)
         if not users:
             await channel.send(embed=embed)
         else:

@@ -103,7 +103,7 @@ class Colors(commands.Cog):
             'Enabled': 0,
             'MasterRoleID': 0 # Rôle utilisé pour ordonner les rôles de couleur dans la liste des rôles
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'settings', default_values=default_settings)
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
         
         self.reorganize_countdowns = {}
 
@@ -114,11 +114,11 @@ class Colors(commands.Cog):
     
     def is_enabled(self, guild: discord.Guild) -> bool:
         """Renvoie True si le système de rôles de couleur est activé sur le serveur."""
-        return self.data.get_keyvalue_table_value(guild, 'settings', 'Enabled', cast=bool)
+        return self.data.get_collection_value(guild, 'settings', 'Enabled', cast=bool)
     
     def get_master_role(self, guild: discord.Guild) -> discord.Role | None:
         """Renvoie le rôle utilisé pour ordonner les rôles de couleur dans la liste des rôles."""
-        role_id = self.data.get_keyvalue_table_value(guild, 'settings', 'MasterRoleID', cast=int)
+        role_id = self.data.get_collection_value(guild, 'settings', 'MasterRoleID', cast=int)
         return guild.get_role(role_id)
     
     def set_master_role(self, guild: discord.Guild, role: discord.Role | None) -> None:

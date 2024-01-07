@@ -150,7 +150,7 @@ class Core(commands.Cog):
             'MainTextChannelID': 0,
             'Timezone': 'Europe/Paris'
         }
-        self.data.register_keyvalue_table_for(discord.Guild, 'global_settings', default_values=default_preferences)
+        self.data.append_collection_initializer_for(discord.Guild, 'global_settings', default_values=default_preferences)
         
         self.timezones = pytz.all_timezones
         
@@ -340,7 +340,7 @@ class Core(commands.Cog):
         :param guild: Serveur concerné
         :return: Dictionnaire de strings des préférences globales
         """
-        return self.data.get_keyvalue_table_values(guild, 'global_settings')
+        return self.data.get_collection_values(guild, 'global_settings')
     
     def get_guild_global_setting(self, guild: discord.Guild, key: str, *, cast: type = str) -> Any:
         """Récupère une valeur d'une préférence globale
@@ -350,7 +350,7 @@ class Core(commands.Cog):
         :param cast: Type de la valeur à récupérer, par défaut str
         :return: Valeur de la préférence
         """
-        return self.data.get_keyvalue_table_value(guild, 'global_settings', key, cast=cast)
+        return self.data.get_collection_value(guild, 'global_settings', key, cast=cast)
     
     def set_guild_global_setting(self, guild: discord.Guild, key: str, value: Any) -> None:
         """Définit la valeur d'une préférence globale
