@@ -56,6 +56,7 @@ class Birthdays(commands.Cog):
             logger.info(f"Vérification des anniversaires ({self.last_check})")
             for guild in self.bot.guilds:
                 birthdays = self.get_birthdays_today(guild)
+                print(birthdays)
                 if not birthdays:
                     continue
                 
