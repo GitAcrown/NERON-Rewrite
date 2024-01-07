@@ -56,27 +56,24 @@ class Birthdays(commands.Cog):
             logger.info(f"Vérification des anniversaires ({self.last_check})")
             for guild in self.bot.guilds:
                 birthdays = self.get_birthdays_today(guild)
-                print(birthdays)
                 if not birthdays:
                     continue
                 
                 channel = self.get_birthday_channel(guild)
                 if channel and isinstance(channel, (discord.TextChannel)):
-                    if not self.is_notification_hour(guild):
-                        continue
-                    tz = self.get_timezone(guild)
-                    zodiac = self.get_zodiac_sign(datetime.now(tz))
-                    zodiac = f' · {zodiac[1]}' if zodiac else ''
-                    txt = f"> ## Anniversaires aujourd'hui | {datetime.now().strftime('%d/%m')}{zodiac}\n"
-                    for m in birthdays:
-                        txt += f"> {m.mention}\n"
-                    await channel.send(txt, silent=True)
+                    if self.is_notification_hour(guild):
+                        tz = self.get_timezone(guild)
+                        zodiac = self.get_zodiac_sign(datetime.now(tz))
+                        zodiac = f' · {zodiac[1]}' if zodiac else ''
+                        txt = f"> ## Anniversaires aujourd'hui | {datetime.now().strftime('%d/%m')}{zodiac}\n"
+                        for m in birthdays:
+                            txt += f"> {m.mention}\n"
+                        await channel.send(txt, silent=True)
                     
                 if self.is_role_attribution_hour(guild) or self.override_conditions.get(guild.id, False):
-                    logger.info(f"1 Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
                     role = self.get_birthday_role(guild)
                     if role:
-                        logger.info(f"2 Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
+                        logger.info(f"Vérification de l'attribution du rôle d'anniversaire sur {guild.name}")
                         for m in guild.members:
                             if m in birthdays:
                                 continue
@@ -163,7 +160,6 @@ class Birthdays(commands.Cog):
         """Vérifie si c'est l'heure d'attribuer le rôle d'anniversaire (minuit chaque jour selon le fuseau horaire du serveur)"""
         tz = self.get_timezone(guild)
         now = datetime.now(tz)
-        print(now.hour)
         return now.hour == 0
     
     def set_notification_hour(self, guild: discord.Guild, hour: int):
