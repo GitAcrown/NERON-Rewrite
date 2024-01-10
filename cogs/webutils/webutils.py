@@ -129,7 +129,7 @@ class WebUtils(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Gestion des déclencheurs regex"""
+        """Gestion des déclencheurs"""
         if message.author.bot:
             return
         if not message.guild:
@@ -142,7 +142,8 @@ class WebUtils(commands.Cog):
         if not triggers:
             return
         
-        links = re.findall(r'https?://[^\s]+', message.content)
+        # On exclut les liens précédés de \
+        links = re.findall(r'(?<!\\)(https?://[^\s]+)', message.content)
         if not links:
             return
         
