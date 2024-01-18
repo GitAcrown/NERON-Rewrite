@@ -128,8 +128,9 @@ class Quotes(commands.Cog):
             extras={'description': "Génère une image de citation avec le contenu du message sélectionné."})
         self.bot.tree.add_command(self.generate_quote)
         
-        self.__assets = {}
-        self.__fonts = {}
+        self.__assets = {} # Assets préchargés
+        self.__fonts = {} # Polices préchargées
+        self.__backgrounds = {} # Avatars avec leurs dégradés précalculés
         
     def cog_unload(self):
         self.data.close_all()
@@ -159,6 +160,18 @@ class Quotes(commands.Cog):
         if key not in self.__fonts:
             self.__fonts[key] = ImageFont.truetype(font_path, size, encoding='unic')
         return self.__fonts[key]
+    
+    async def __get_background(self, user: discord.Member) -> Tuple[Image.Image, Tuple[int, int, int]]:
+        """Récupère un avatar avec dégradé depuis le cache ou le génère"""
+        if user.id not in self.__backgrounds:
+            size = DEFAULT_QUOTE_IMAGE_SIZE
+            avatar = BytesIO(await user.display_avatar.read())
+            image = Image.open(avatar).resize(size)
+            bg_color = colorgram.extract(image.resize((32, 32)), 1)[0].rgb 
+            grad_magnitude = 0.875
+            image = self._add_gradientv2(image, grad_magnitude, bg_color)
+            self.__backgrounds[user.id] = (image, bg_color)
+        return self.__backgrounds[user.id]
         
     # Génération de citations -------------------------------------------------
     
@@ -177,7 +190,7 @@ class Quotes(commands.Cog):
         gradient_im = Image.alpha_composite(image.convert('RGBA'), gradient)
         return gradient_im
     
-    def create_quote_image(self, avatar: str | BytesIO, text: str, author_name: str, channel_name: str, date: str, *, size: tuple[int, int] = (512, 512)):
+    def create_quote_image(self, bg: Image.Image, bg_color: Tuple[int, int, int], text: str, author_name: str, channel_name: str, date: str, *, size: tuple[int, int] = (512, 512)):
         """Crée une image de citation avec un avatar, un texte, un nom d'auteur et une date."""
         text = text.upper()
 
@@ -186,45 +199,41 @@ class Quotes(commands.Cog):
         assets_path = self.data.get_folder('assets')
         font_path = str(assets_path / "NotoBebasNeue.ttf")
         
-        with Image.open(avatar).resize(size) as image:
-            
-            bg_color = colorgram.extract(image.resize((32, 32)), 1)[0].rgb 
-            grad_magnitude = 0.85 + 0.05 * (len(text) // 100)
-            image = self._add_gradientv2(image, grad_magnitude, bg_color)
-            luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
+        image = bg
+        luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
 
-            text_size = int(h * 0.08)
+        text_size = int(h * 0.08)
+        text_font = self.__get_font(font_path, text_size)
+        draw = ImageDraw.Draw(image)
+        text_color = (255, 255, 255) if luminosity < 0.5 else (0, 0, 0)
+
+        # Texte principal --------
+        max_lines = len(text) // 60 + 2 if len(text) > 200 else 4
+        wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
+        lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
+        while lines[-1] == "§":
+            text_size -= 2
             text_font = self.__get_font(font_path, text_size)
-            draw = ImageDraw.Draw(image)
-            text_color = (255, 255, 255) if luminosity < 0.5 else (0, 0, 0)
-
-            # Texte principal --------
-            max_lines = len(text) // 60 + 2 if len(text) > 200 else 4
             wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
             lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
-            while lines[-1] == "§":
-                text_size -= 2
-                text_font = self.__get_font(font_path, text_size)
-                wrap_width = int(box_w / (text_font.getlength("A") * 0.85))
-                lines = textwrap.fill(text, width=wrap_width, max_lines=max_lines, placeholder="§")
-            draw.multiline_text((w / 2, h * 0.835), lines, font=text_font, spacing=0.25, align='center', fill=text_color, anchor='md')
+        draw.multiline_text((w / 2, h * 0.835), lines, font=text_font, spacing=0.25, align='center', fill=text_color, anchor='md')
 
-            # Icone et lignes ---------
-            icon = self.__assets['quotemark_white'] if luminosity < 0.5 else self.__assets['quotemark_black']
-            icon_image = icon.resize((int(w * 0.06), int(w * 0.06)))
-            icon_left = w / 2 - icon_image.width / 2
-            image.paste(icon_image, (int(icon_left), int(h * 0.85 - icon_image.height / 2)), icon_image)
+        # Icone et lignes ---------
+        icon = self.__assets['quotemark_white'] if luminosity < 0.5 else self.__assets['quotemark_black']
+        icon_image = icon.resize((int(w * 0.06), int(w * 0.06)))
+        icon_left = w / 2 - icon_image.width / 2
+        image.paste(icon_image, (int(icon_left), int(h * 0.85 - icon_image.height / 2)), icon_image)
 
-            author_font = self.__get_font(font_path, int(h * 0.060))
-            draw.text((w / 2,  h * 0.95), author_name, font=author_font, fill=text_color, anchor='md', align='center')
+        author_font = self.__get_font(font_path, int(h * 0.060))
+        draw.text((w / 2,  h * 0.95), author_name, font=author_font, fill=text_color, anchor='md', align='center')
 
-            draw.line((icon_left - w * 0.25, h * 0.85, icon_left - w * 0.02, h * 0.85), fill=text_color, width=1) # Ligne de gauche
-            draw.line((icon_left + icon_image.width + w * 0.02, h * 0.85, icon_left + icon_image.width + w * 0.25, h * 0.85), fill=text_color, width=1) # Ligne de droite
+        draw.line((icon_left - w * 0.25, h * 0.85, icon_left - w * 0.02, h * 0.85), fill=text_color, width=1) # Ligne de gauche
+        draw.line((icon_left + icon_image.width + w * 0.02, h * 0.85, icon_left + icon_image.width + w * 0.25, h * 0.85), fill=text_color, width=1) # Ligne de droite
 
-            # Date -------------------
-            date_font = self.__get_font(font_path, int(h * 0.040))
-            date_text = f"#{channel_name} • {date}"
-            draw.text((w / 2, h * 0.9875), date_text, font=date_font, fill=text_color, anchor='md', align='center')
+        # Date -------------------
+        date_font = self.__get_font(font_path, int(h * 0.040))
+        date_text = f"#{channel_name} • {date}"
+        draw.text((w / 2, h * 0.9875), date_text, font=date_font, fill=text_color, anchor='md', align='center')
         return image
     
     async def fetch_following_messages(self, starting_message: discord.Message, messages_limit: int = 5, lenght_limit: int = 1000) -> list[discord.Message]:
@@ -250,7 +259,7 @@ class Quotes(commands.Cog):
         if not isinstance(base_message.author, discord.Member):
             raise ValueError("Le message de base doit être envoyé par un membre du serveur.")
         
-        avatar = BytesIO(await messages[0].author.display_avatar.read())
+        precal = await self.__get_background(base_message.author)
         message_date = messages[0].created_at.strftime("%d.%m.%Y")
         if isinstance(messages[0].channel, (discord.DMChannel, discord.PartialMessageable)):
             message_channel_name = 'MP'
@@ -259,7 +268,7 @@ class Quotes(commands.Cog):
         full_content = ' '.join([self.normalize_text(m.content) for m in messages])
         author_name = f"@{base_message.author.name}" if not base_message.author.nick else f"{base_message.author.nick} (@{base_message.author.name})"
         try:
-            image = self.create_quote_image(avatar, full_content, author_name, message_channel_name, message_date, size=DEFAULT_QUOTE_IMAGE_SIZE)
+            image = self.create_quote_image(precal[0], precal[1], full_content, author_name, message_channel_name, message_date, size=DEFAULT_QUOTE_IMAGE_SIZE)
         except Exception as e:
             logger.exception(e, exc_info=True)
             raise ValueError("Impossible de générer l'image de citation.")
@@ -320,6 +329,11 @@ class Quotes(commands.Cog):
             logger.exception(e)
             await interaction.followup.send(f"**Erreur dans l'initialisation du menu** · `{e}`", ephemeral=True)
         
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if before.id in self.__backgrounds:
+            if before.display_avatar != after.display_avatar:
+                del self.__backgrounds[before.id]
 
 async def setup(bot):
     await bot.add_cog(Quotes(bot))
