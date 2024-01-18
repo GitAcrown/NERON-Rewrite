@@ -172,7 +172,7 @@ class Quotes(commands.Cog):
             grad_magnitude = 0.875
             image = self._add_gradientv2(image, grad_magnitude, bg_color)
             self.__backgrounds[user.id] = (image, bg_color)
-        return copy.copy(self.__backgrounds[user.id])
+        return self.__backgrounds[user.id]
         
     # Génération de citations -------------------------------------------------
     
@@ -200,7 +200,7 @@ class Quotes(commands.Cog):
         assets_path = self.data.get_folder('assets')
         font_path = str(assets_path / "NotoBebasNeue.ttf")
         
-        image = bg
+        image = copy.copy(bg)
         luminosity = (0.2126 * bg_color[0] + 0.7152 * bg_color[1] + 0.0722 * bg_color[2]) / 255
 
         text_size = int(h * 0.08)
