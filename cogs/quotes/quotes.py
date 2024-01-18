@@ -1,3 +1,4 @@
+import copy
 import logging
 import re
 import textwrap
@@ -171,7 +172,7 @@ class Quotes(commands.Cog):
             grad_magnitude = 0.875
             image = self._add_gradientv2(image, grad_magnitude, bg_color)
             self.__backgrounds[user.id] = (image, bg_color)
-        return self.__backgrounds[user.id]
+        return copy.copy(self.__backgrounds[user.id])
         
     # Génération de citations -------------------------------------------------
     
