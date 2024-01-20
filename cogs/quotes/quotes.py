@@ -453,7 +453,7 @@ class Quotes(commands.Cog):
                 bg = bg.crop(((bg.width - width) // 2, 0, (bg.width - width) // 2 + width, bg.height))
             bg = cv2.GaussianBlur(np.array(bg), (115, 115), 0)
             bg = Image.fromarray(bg)
-            bg = self._add_gradient_dir(bg, 0.95, direction='right_to_left')
+            bg = self._add_gradient_dir(bg, 0.9, direction='right_to_left')
             img.paste(bg, (0, 0))
             
             # On ajoute l'avatar arrondi à gauche
