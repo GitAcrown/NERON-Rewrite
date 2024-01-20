@@ -193,7 +193,7 @@ class MultQuotifyView(discord.ui.View):
     async def save_quit(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         new_view = discord.ui.View()
-        message_url = self.selected_messages[0].jump_url
+        message_url = self.initial_message.jump_url
         new_view.add_item(discord.ui.Button(label="Aller au message", url=message_url, style=discord.ButtonStyle.link))
         
         if self.interaction:
