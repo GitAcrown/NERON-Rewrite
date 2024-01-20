@@ -444,12 +444,12 @@ class Quotes(commands.Cog):
             text_color = (255, 255, 255)
             
             bg = bg.resize((width, width))
-            bg.thumbnail((width, width), Image.LANCZOS)
             if bg.height > height:
                 # On crop pour avoir height en hauteur (milieu de l'image)
                 bg = bg.crop((0, (bg.height - height) // 2, bg.width, (bg.height - height) // 2 + height))
             elif bg.height < height:
-                # On crop les côtés pour avoir height en hauteur (milieu de l'image)
+                # On resize pour avoir height en hauteur (milieu de l'image)
+                bg = bg.resize((height, height), Image.LANCZOS)
                 bg = bg.crop(((bg.width - width) // 2, 0, (bg.width - width) // 2 + width, bg.height))
             bg = cv2.GaussianBlur(np.array(bg), (115, 115), 0)
             bg = Image.fromarray(bg)
