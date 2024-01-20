@@ -217,15 +217,15 @@ class Quotes(commands.Cog):
         self.data = dataio.get_cog_data(self)
 
         self.generate_quote = app_commands.ContextMenu(
-            name='Générer une citation',
+            name='Transformer en citation',
             callback=self.generate_quote_callback, 
             extras={'description': "Génère une image de citation avec le contenu du message sélectionné."})
         self.bot.tree.add_command(self.generate_quote)
         
         self.generate_multiple_quote = app_commands.ContextMenu(
-            name='Générer une citation multiple',
+            name='Compiler des citations',
             callback=self.generate_multiple_quote_callback,
-            extras={'description': "Génère une image représentant les messages sélectionnés."})
+            extras={'description': "Génère une compilation d'images de citations avec les messages sélectionnés"})
         self.bot.tree.add_command(self.generate_multiple_quote)
         
         self.__assets = {} # Assets préchargés
