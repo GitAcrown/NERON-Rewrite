@@ -439,7 +439,6 @@ class Quotes(commands.Cog):
             # On ajoute le fond avec cv2 (on crop l'avatar avec pillow avant)
             disp_avatar = BytesIO(await msgs[0].author.display_avatar.read())
             disp_avatar = Image.open(disp_avatar).convert('RGBA')
-
             
             bg = copy.copy(disp_avatar)
             text_color = (255, 255, 255)
@@ -449,6 +448,9 @@ class Quotes(commands.Cog):
             if bg.height > height:
                 # On crop pour avoir height en hauteur (milieu de l'image)
                 bg = bg.crop((0, (bg.height - height) // 2, bg.width, (bg.height - height) // 2 + height))
+            elif bg.height < height:
+                # On crop les côtés pour avoir height en hauteur (milieu de l'image)
+                bg = bg.crop(((bg.width - width) // 2, 0, (bg.width - width) // 2 + width, bg.height))
             bg = cv2.GaussianBlur(np.array(bg), (115, 115), 0)
             bg = Image.fromarray(bg)
             bg = self._add_gradient_dir(bg, 0.95, direction='right_to_left')
