@@ -124,8 +124,8 @@ class MultQuotifyMessageSelect(discord.ui.Select):
     """Menu déroulant pour sélectionner les messages à citer"""
     def __init__(self, view, placeholder: str, options: List[discord.SelectOption]):
         super().__init__(placeholder=placeholder, 
-                         min_values=1, 
-                         max_values=min(len(options), 15), 
+                         min_values=0,
+                         max_values=min(len(options), 10), 
                          options=options)
         self.__view = view
         
@@ -145,7 +145,7 @@ class MultQuotifyView(discord.ui.View):
         self.__cog = cog
         self.initial_message = initial_message
         self.potential_messages = []
-        self.selected_messages = [initial_message]
+        self.selected_messages = []
         
         self.interaction : Interaction | None = None
         
@@ -159,7 +159,7 @@ class MultQuotifyView(discord.ui.View):
     
     async def on_timeout(self):
         new_view = discord.ui.View()
-        message_url = self.selected_messages[0].jump_url
+        message_url = self.initial_message.jump_url
         new_view.add_item(discord.ui.Button(label="Aller au message", url=message_url, style=discord.ButtonStyle.link))
         
         if self.interaction:
@@ -172,7 +172,7 @@ class MultQuotifyView(discord.ui.View):
         self.potential_messages = sorted(potential_msgs, key=lambda m: m.created_at)
         if len(self.potential_messages) > 1:
             options = [SelectOption(label=f"{m.author.name} : {pretty.shorten_text(m.clean_content, 50)}", value=str(m.id), description=m.created_at.strftime('%H:%M %d/%m/%y'), default= m == self.initial_message) for m in self.potential_messages]
-            self.add_item(MultQuotifyMessageSelect(self, "Sélectionnez les messages à citer", options))
+            self.add_item(MultQuotifyMessageSelect(self, "Sélectionnez les messages à ajouter", options))
 
         image = await self._get_image()
         if not image:
@@ -182,7 +182,7 @@ class MultQuotifyView(discord.ui.View):
         
     async def _get_image(self) -> Optional[discord.File]:
         try:
-            return await self.__cog.generate_multiple_quote_from(self.selected_messages)
+            return await self.__cog.generate_multiple_quote_from([self.initial_message] + self.selected_messages)
         except Exception as e:
             logger.exception(e)
             if self.interaction:
@@ -408,13 +408,14 @@ class Quotes(commands.Cog):
         
         # On commence par regrouper les messages par auteur
         regrouped_messages = {} # On regroupe les messages qui se suivent avec le même auteur
-        last_author = None
-        for message in messages:
-            if message.author.name == last_author:
-                regrouped_messages[last_author].append(message)
-            else:
-                regrouped_messages[message.author.name] = [message]
-                last_author = message.author.name
+        current_author = None
+        group = 0
+        for msg in messages:
+            if msg.author != current_author:
+                group += 1
+                current_author = msg.author
+                regrouped_messages[group] = []
+            regrouped_messages[group].append(msg)
                 
         # On génère les images
         images = []
@@ -499,9 +500,9 @@ class Quotes(commands.Cog):
                 break
         return messages
     
-    async def fetch_following_messages_multiple_authors(self, starting_message: discord.Message, messages_limit: int = 15) -> list[discord.Message]:
+    async def fetch_following_messages_multiple_authors(self, starting_message: discord.Message, messages_limit: int = 10) -> list[discord.Message]:
         """Ajoute au message initial les messages autour jusqu'à atteindre la limite de messages"""
-        messages = [starting_message]
+        messages = []
         async for message in starting_message.channel.history(limit=messages_limit, after=starting_message):
             if not message.content or message.content.isspace():
                 continue
