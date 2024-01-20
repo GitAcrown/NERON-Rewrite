@@ -449,7 +449,7 @@ class Quotes(commands.Cog):
             if bg.height > height:
                 # On crop pour avoir height en hauteur (milieu de l'image)
                 bg = bg.crop((0, (bg.height - height) // 2, bg.width, (bg.height - height) // 2 + height))
-            bg = cv2.GaussianBlur(np.array(bg), (95, 95), 0)
+            bg = cv2.GaussianBlur(np.array(bg), (115, 115), 0)
             bg = Image.fromarray(bg)
             bg = self._add_gradient_dir(bg, 0.95, direction='right_to_left')
             img.paste(bg, (0, 0))
