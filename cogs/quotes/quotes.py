@@ -223,7 +223,7 @@ class Quotes(commands.Cog):
         self.bot.tree.add_command(self.generate_quote)
         
         self.generate_multiple_quote = app_commands.ContextMenu(
-            name='Compiler des citations',
+            name='Combiner des messages',
             callback=self.generate_multiple_quote_callback,
             extras={'description': "Génère une compilation d'images de citations avec les messages sélectionnés"})
         self.bot.tree.add_command(self.generate_multiple_quote)
