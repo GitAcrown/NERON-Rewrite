@@ -423,7 +423,7 @@ class Quotes(commands.Cog):
         for _, msgs in regrouped_messages.items():
             full_text = ''
             for msg in msgs:
-                content = self.normalize_text(msg.content)
+                content = self.normalize_text(msg.clean_content)
                 if len(content) > 50:
                     content = '\n'.join(textwrap.wrap(content, 50))
                 full_text += f"{content}\n"
