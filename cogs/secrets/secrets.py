@@ -9,7 +9,7 @@ from common import dataio
 
 logger = logging.getLogger(f'NERON.{__name__.split(".")[-1]}')
 
-COOLDOWN_DELAY = 60 * 60 * 6  # 6 heures
+COOLDOWN_DELAY = 60 * 60 * 12  # 12 heures
 
 class SendModal(discord.ui.Modal):
     message_content = discord.ui.TextInput(label='Contenu',
