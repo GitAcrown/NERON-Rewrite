@@ -17,7 +17,7 @@ class SendModal(discord.ui.Modal):
                                            placeholder='Contenu de votre message anonyme',
                                            required=True,
                                            min_length=1,
-                                           max_length=1800)
+                                           max_length=1000)
     signature = discord.ui.TextInput(label='Signature',
                                      style=discord.TextStyle.short,
                                      placeholder='Signature (optionnelle) de votre message',
