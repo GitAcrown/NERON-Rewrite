@@ -179,6 +179,12 @@ class Secrets(commands.Cog):
             else:
                 await interaction.response.send_message(f"**Utilisateur non bloqué** • Vous n'avez pas bloqué l'auteur de ce message.", ephemeral=True)
 
+    @secrets_group.command(name='stats')
+    async def stats(self, interaction: Interaction):
+        """Renvoie des statistiques sur les messages anonymes."""
+        r = self.data.get('global').fetchone("SELECT COUNT(*) FROM tracking")
+        total = r['COUNT(*)'] if r else 0
+        await interaction.response.send_message(f"**Statistiques** • {total} messages anonymes ont été envoyés depuis le début.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Secrets(bot))
