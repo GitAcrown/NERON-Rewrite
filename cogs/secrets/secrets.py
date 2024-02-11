@@ -1,3 +1,4 @@
+from imaplib import Commands
 import logging
 from datetime import datetime, timedelta
 
@@ -146,7 +147,10 @@ class Secrets(commands.Cog):
         """Bloque un utilisateur pour ne plus recevoir de messages anonymes de sa part.
         
         :param message_id: L'identifiant du message dont il faut bloquer l'auteur"""
-        msg_id = int(message_id)
+        try:
+            msg_id = int(message_id)
+        except ValueError:
+            return await interaction.response.send_message(f"**Erreur** • L'identifiant du message doit être un nombre.", ephemeral=True)
         sender_id = self.get_tracking(msg_id)
         if sender_id:
             sender = self.bot.get_user(sender_id)
@@ -165,7 +169,10 @@ class Secrets(commands.Cog):
         """Débloque un utilisateur pour recevoir de nouveau des messages anonymes de sa part.
         
         :param message_id: L'identifiant du message dont il faut débloquer l'auteur"""
-        msg_id = int(message_id)
+        try:
+            msg_id = int(message_id)
+        except ValueError:
+            return await interaction.response.send_message(f"**Erreur** • L'identifiant du message doit être un nombre.", ephemeral=True)
         sender_id = self.get_tracking(msg_id)
         if sender_id:
             sender = self.bot.get_user(sender_id)
@@ -185,6 +192,22 @@ class Secrets(commands.Cog):
         r = self.data.get('global').fetchone("SELECT COUNT(*) FROM tracking")
         total = r['COUNT(*)'] if r else 0
         await interaction.response.send_message(f"**Statistiques** • {total} messages anonymes ont été envoyés depuis le début.", ephemeral=True)
+    
+    @commands.command(name="revealsecret", hidden=True)
+    @commands.is_owner()
+    async def reveal_secret(self, ctx, message_id: str):
+        try:
+            msg_id = int(message_id)
+        except ValueError:
+            return await ctx.send("L'identifiant du message doit être un nombre.")
+        sender_id = self.get_tracking(msg_id)
+        if sender_id:
+            sender = self.bot.get_user(sender_id)
+            if not sender:
+                return await ctx.send("L'utilisateur concerné n'est pas joignable.")
+            await ctx.send(f"L'auteur du message est {sender.mention}.")
+        else:
+            await ctx.send("Ce message n'est pas un message anonyme.")
 
 async def setup(bot):
     await bot.add_cog(Secrets(bot))
