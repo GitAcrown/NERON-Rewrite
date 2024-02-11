@@ -359,5 +359,25 @@ class MsgBoard(commands.Cog):
         self.data.set_keyvalue_table_value(interaction.guild, 'settings', 'MaxMessageAge', maxage * 60 * 60)
         await interaction.response.send_message(f"**Âge maximal** • L'âge maximal des messages a été défini à {maxage} heures.", ephemeral=True)
         
+    @config_group.command(name='manual')
+    async def manual_repost(self, interaction: Interaction, message_id: str):
+        """Reposter manuellement un message sur le salon de compilation
+        
+        :param message: Message à reposter"""
+        if not isinstance(interaction.guild, discord.Guild):
+            raise ValueError("L'interaction doit être sur un serveur.")
+        if not isinstance(interaction.channel, (discord.TextChannel, discord.Thread)):
+            return await interaction.response.send_message("**Erreur** • Cette commande ne peut être utilisée que dans un salon textuel.", ephemeral=True)
+        try:
+            message = await interaction.channel.fetch_message(int(message_id))
+        except discord.NotFound:
+            return await interaction.response.send_message("**Erreur** • Message non trouvé.", ephemeral=True)
+        if not self.data.get_collection_value(interaction.guild, 'settings', 'Enabled', cast=bool):
+            return await interaction.response.send_message("**Erreur** • Activez d'abord le message board avec `/msgboard enable`.", ephemeral=True)
+        
+        await self.repost_message(message)
+        await interaction.response.send_message(f"**Succès** • Le message a été reposté sur le salon de compilation.", ephemeral=True)
+    
+        
 async def setup(bot):
     await bot.add_cog(MsgBoard(bot))
