@@ -97,15 +97,18 @@ class MsgBoard(commands.Cog):
         
         async with aiohttp.ClientSession() as session:
             webhook = discord.Webhook.from_url(webhook_url, session=session, client=self.bot)
-            await webhook.send(
-                content=content,
-                username=message.author.name,
-                avatar_url=message.author.display_avatar.url,
-                embeds=message.embeds,
-                files=files,
-                silent=True,
-                view=jump_view
-            )
+            try:
+                await webhook.send(
+                    content=content,
+                    username=message.author.name,
+                    avatar_url=message.author.display_avatar.url,
+                    embeds=message.embeds,
+                    files=files,
+                    silent=True,
+                    view=jump_view
+                )
+            except discord.HTTPException as e:
+                logger.error(f"Erreur lors du repost du message {message.id} sur le salon de compilation : {e}")
             
     # Notifications ------------------------------------------------------------
     
@@ -363,7 +366,7 @@ class MsgBoard(commands.Cog):
     async def manual_repost(self, interaction: Interaction, message_id: str):
         """Reposter manuellement un message sur le salon de compilation
         
-        :param message: Message à reposter"""
+        :param message_id: ID du message à reposter (sur le salon actuel)"""
         if not isinstance(interaction.guild, discord.Guild):
             raise ValueError("L'interaction doit être sur un serveur.")
         if not isinstance(interaction.channel, (discord.TextChannel, discord.Thread)):
