@@ -43,6 +43,7 @@ class SendModal(discord.ui.Modal):
             await interaction.response.send_message(f"**Message envoyé** • Votre message `#{sended.id}` a été envoyé à {self.receiver.mention}.", ephemeral=True)
             self.__cog.add_tracking(sended, interaction.user)
             self.__cog._cooldowns[(interaction.user.id, self.receiver.id)] = datetime.now() + timedelta(seconds=COOLDOWN_DELAY)
+            logger.info(f"Message anonyme envoyé par {interaction.user} à {self.receiver} le {datetime.now().strftime('%d/%m/%Y %H:%M:%S')})")
 
 class Secrets(commands.Cog):
     """Envoi et réception de messages anonymes."""
