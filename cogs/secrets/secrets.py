@@ -219,7 +219,7 @@ class Secrets(commands.Cog):
         total = r['COUNT(*)'] if r else 0
         await interaction.response.send_message(f"**Statistiques** • {total} messages anonymes ont été envoyés depuis le début.", ephemeral=True)
     
-    settings_group = app_commands.Group(name='config-secrets', description="Commandes d'administration des messages anonymes.")
+    settings_group = app_commands.Group(name='config-secrets', description="Commandes d'administration des messages anonymes.", default_permissions=discord.Permissions(administrator=True))
     
     @settings_group.command(name='reveal')
     async def reveal_secret(self, interaction: Interaction, message_id: str):
