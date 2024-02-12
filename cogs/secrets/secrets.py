@@ -49,6 +49,12 @@ class Secrets(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.data = dataio.get_cog_data(self)
+        
+        # Paramètres de serveurs
+        default_settings = {
+            'RestrictRoleID': 0
+        }
+        self.data.append_collection_initializer_for(discord.Guild, 'settings', default_values=default_settings)
 
         # Table de correspondance entre les messages et les utilisateurs pour pouvoir les bloquer
         tracking = dataio.TableInitializer(
@@ -78,6 +84,19 @@ class Secrets(commands.Cog):
     
     def cog_unload(self):
         self.data.close_all()
+        
+    # Settings ----------------------------------------------------------------
+    
+    def get_restrict_role(self, guild: discord.Guild) -> discord.Role | None:
+        """Renvoie le rôle restreignant l'envoi de messages anonymes."""
+        role_id = self.data.get_collection_value(guild, 'settings', 'RestrictRoleID', cast=int)
+        if role_id:
+            return guild.get_role(role_id)
+        return None
+    
+    def set_restrict_role(self, guild: discord.Guild, role: discord.Role | None):
+        """Définit le rôle restreignant l'envoi de messages anonymes."""
+        self.data.set_keyvalue_table_value(guild, 'settings', 'RestrictRoleID', role.id if role else 0)
         
     # Tracking ----------------------------------------------------------------
     
@@ -129,6 +148,10 @@ class Secrets(commands.Cog):
             return await interaction.response.send_message(f"**Impossible** • Vous ne pouvez pas vous envoyer de message à vous-même.", ephemeral=True)
         if user.bot:
             return await interaction.response.send_message(f"**Impossible** • Vous ne pouvez pas envoyer de message à un bot.", ephemeral=True)
+        if isinstance(author, discord.Member) and interaction.guild:
+            restrict_role = self.get_restrict_role(interaction.guild)
+            if restrict_role and restrict_role not in author.roles:
+                return await interaction.response.send_message(f"**Impossible** • Vous devez avoir le rôle {restrict_role.mention} pour envoyer des messages anonymes.", ephemeral=True)
         if author.id in self.get_blacklist(user):
             return await interaction.response.send_message(f"**Impossible** • Cet utilisateur a bloqué un de vos messages, vous ne pouvez donc plus lui en envoyer.", ephemeral=True)
         cd = self._cooldowns.get((author.id, user.id))
@@ -193,21 +216,38 @@ class Secrets(commands.Cog):
         total = r['COUNT(*)'] if r else 0
         await interaction.response.send_message(f"**Statistiques** • {total} messages anonymes ont été envoyés depuis le début.", ephemeral=True)
     
-    @commands.command(name="revealsecret", hidden=True)
-    @commands.is_owner()
-    async def reveal_secret(self, ctx, message_id: str):
+    settings_group = app_commands.Group(name='config-secrets', description="Commandes d'administration des messages anonymes.")
+    
+    @settings_group.command(name='reveal')
+    async def reveal_secret(self, interaction: Interaction, message_id: str):
+        """Révèle l'auteur d'un message anonyme.
+        
+        :param message_id: L'identifiant du message à révéler"""  
         try:
             msg_id = int(message_id)
         except ValueError:
-            return await ctx.send("L'identifiant du message doit être un nombre.")
+            return await interaction.response.send_message(f"**Erreur** • L'identifiant du message doit être un nombre.", ephemeral=True)   
         sender_id = self.get_tracking(msg_id)
         if sender_id:
             sender = self.bot.get_user(sender_id)
             if not sender:
-                return await ctx.send("L'utilisateur concerné n'est pas joignable.")
-            await ctx.send(f"L'auteur du message est {sender.mention}.")
+                return await interaction.response.send_message(f"**Erreur** • L'utilisateur concerné n'est pas joignable.", ephemeral=True)
+            await interaction.response.send_message(f"**Message anonyme** • Le message `#{msg_id}` a été envoyé par {sender.mention} ({sender.name}).", ephemeral=True)
         else:
-            await ctx.send("Ce message n'est pas un message anonyme.")
+            await interaction.response.send_message(f"**Erreur** • Le message `#{msg_id}` n'est pas un message anonyme connu.", ephemeral=True)
+            
+    @settings_group.command(name='restrict')
+    async def restrict_role(self, interaction: Interaction, role: discord.Role | None):
+        """Définit le rôle restreignant l'envoi de messages anonymes.
+        
+        :param role: Le rôle à définir"""
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message(f"**Erreur** • Cette commande ne peut pas être utilisée en dehors d'un serveur.", ephemeral=True)
+        self.set_restrict_role(interaction.guild, role)
+        if role:
+            await interaction.response.send_message(f"**Rôle défini** • L'envoi de messages anonymes est désormais restreint aux membres ayant le rôle {role.mention}.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"**Rôle retiré** • Aucun rôle ne restreint désormais l'envoi de messages anonymes.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Secrets(bot))
