@@ -32,6 +32,8 @@ class SendModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction) -> None:
         msg = self.message_content.value
         if self.signature.value:
+            if discord.utils.find(lambda m: m.name.lower() == self.signature.value.lower(), self.__cog.bot.users):
+                return await interaction.response.send_message("**Erreur** • Vous ne pouvez pas signer avec un pseudo existant.", ephemeral=True)
             msg += f"\n\n— *Message anonyme signé **{self.signature.value}***"
         else:
             msg += "\n\n— *Message anonyme*"
